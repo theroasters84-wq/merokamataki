@@ -2,6 +2,9 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Απαραίτητο για τη σύνδεση στο Render
+  }
 });
 
 const initDB = async () => {
