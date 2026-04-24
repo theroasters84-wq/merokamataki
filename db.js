@@ -45,6 +45,8 @@ const initDB = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         daily_wage DECIMAL(10, 2) NOT NULL,
+        hourly_rate DECIMAL(10, 2) DEFAULT 0,
+        default_hours DECIMAL(5, 2) DEFAULT 8,
         days_per_week INTEGER NOT NULL
       );
     `);
@@ -74,6 +76,10 @@ const initDB = async () => {
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS cash_revenue DECIMAL(10, 2) DEFAULT 0;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS pos_revenue DECIMAL(10, 2) DEFAULT 0;`);
 
+    // Ευέλικτο Ωρομίσθιο: Προσθήκη στηλών για hourly rate και default hours
+    await pool.query(`ALTER TABLE dashboard_employees ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE dashboard_employees ADD COLUMN IF NOT EXISTS default_hours DECIMAL(5, 2) DEFAULT 8;`);
+
     // Multi-tenancy: Προσθήκη store_id στους πίνακες
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS store_id INTEGER DEFAULT 1;`);
     await pool.query(`ALTER TABLE dashboard_expenses ADD COLUMN IF NOT EXISTS store_id INTEGER DEFAULT 1;`);
@@ -85,6 +91,8 @@ const initDB = async () => {
       DO $$ BEGIN
         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'dashboard_staff') THEN
           ALTER TABLE dashboard_staff ADD COLUMN IF NOT EXISTS store_id INTEGER DEFAULT 1;
+          ALTER TABLE dashboard_staff ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(10, 2) DEFAULT 0;
+          ALTER TABLE dashboard_staff ADD COLUMN IF NOT EXISTS default_hours DECIMAL(5, 2) DEFAULT 8;
         END IF;
       END $$;
     `);

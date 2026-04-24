@@ -122,7 +122,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 <!-- Κάρτα 1: Κλείσιμο Ημέρας (Κρυμμένη, η καταχώρηση γίνεται αποκλειστικά από το Modal) -->
                 <div class="hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col">
@@ -165,7 +165,7 @@
                                     <input type="checkbox" id="dashExpensePaidFromDrawer" checked class="text-primary rounded border-gray-300 focus:ring-primary">
                                     Από Ταμείο
                                 </label>
-                                <button id="addDashExpenseBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded text-lg leading-none transition-colors">+</button>
+                                <button type="button" id="addDashExpenseBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded text-lg leading-none transition-colors">+</button>
                             </div>
                             <ul id="dashExpensesList" class="text-sm space-y-2 max-h-32 overflow-y-auto pr-1 mb-2"></ul>
                             <div class="text-right text-sm font-semibold text-gray-800 border-t border-gray-100 pt-2">
@@ -187,7 +187,7 @@
                 </div>
 
                 <!-- Κάρτα 2: Προσωπικό & Πάγια (Εβδομάδας) -->
-                <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col">
+                <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col lg:col-span-2">
                     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Προσωπικό & Πάγια</h2>
                     
                     <div class="space-y-5">
@@ -347,6 +347,24 @@
         </div>
     </div>
 
+    <!-- Day Action Modal (Επιλογή Ενέργειας Ημέρας) -->
+    <div id="dayActionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[55]">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs mx-4">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800">Επιλογή</h3>
+                <button id="closeDayActionModalBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button id="actionExpensesBtn" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 px-4 rounded-lg transition-colors border border-orange-200 shadow-sm flex items-center justify-center gap-2">
+                    <span class="text-xl">💸</span> Προσθήκη Εξόδων
+                </button>
+                <button id="actionClosureBtn" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 px-4 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center justify-center gap-2">
+                    <span class="text-xl">📊</span> Κλείσιμο Ταμείου
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal (Κρυφό από προεπιλογή) -->
     <div id="dayModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 transform transition-all max-h-[90vh] overflow-y-auto">
@@ -356,7 +374,7 @@
             </div>
             <div id="modalContent" class="space-y-4">
                 <!-- Βάρδιες Ημέρας (Placeholder) -->
-                <div>
+                <div id="modalShiftsSection">
                     <h4 class="text-sm font-semibold text-gray-700 border-b pb-1 mb-2">Βάρδιες Ημέρας</h4>
                     <ul id="modalShiftsList" class="text-sm text-gray-600 space-y-1 bg-gray-50 p-2 rounded border border-gray-100">
                         <li class="italic text-gray-400">Αναμονή δεδομένων...</li>
@@ -378,7 +396,7 @@
                             <input type="checkbox" id="modalExpensePaidFromDrawer" checked class="text-primary rounded border-gray-300 focus:ring-primary">
                             Από Ταμείο
                         </label>
-                        <button id="addExpenseBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded text-lg leading-none transition-colors">+</button>
+                        <button type="button" id="addExpenseBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded text-lg leading-none transition-colors">+</button>
                     </div>
                     <ul id="modalExpensesList" class="text-sm space-y-2 max-h-32 overflow-y-auto pr-1">
                         <!-- Εδώ θα μπαίνουν τα έξοδα -->
@@ -388,8 +406,8 @@
                     </div>
                 </div>
 
-                <!-- Τζίρος & Αποθήκευση -->
-                <div class="pt-4 border-t border-gray-200">
+                <!-- Τζίρος -->
+                <div id="modalRevenueSection" class="pt-4 border-t border-gray-200">
                     <h4 class="text-sm font-semibold text-gray-700 mb-2">Τζίρος & Ταμειακή Συμφωνία</h4>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div>
@@ -406,11 +424,12 @@
                         <input type="number" id="zReceipt" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1" placeholder="0" min="0" step="0.01">
                         <div id="modalDrawerStatus" class="text-sm font-medium p-2 rounded hidden"></div>
                     </div>
-                    
-                    <button id="saveModalDayBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-lg">
-                        Αποθήκευση Ημέρας
-                    </button>
                 </div>
+                
+                <!-- Κουμπί Αποθήκευσης (Ανεξάρτητο για να φαίνεται πάντα) -->
+                <button id="saveModalDayBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-lg mt-4">
+                    Αποθήκευση Ημέρας
+                </button>
             </div>
         </div>
     </div>
