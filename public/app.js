@@ -563,6 +563,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const wage = rate * hours;
                     const days = row.querySelectorAll('.day-checkbox:checked').length;
                     totalPersonnelWeekly += (wage * days);
+                    row.querySelectorAll('.day-checkbox:checked').forEach(cb => {
+                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${cb.dataset.day}"]`);
+                        const dayHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+                        totalPersonnelWeekly += rate * dayHours;
+                    });
                 });
                 const monthlyPersonnelCost = totalPersonnelWeekly * 4.3;
 
@@ -922,8 +927,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (checkbox && checkbox.checked) {
                 const name = row.querySelector('.name-input').value.trim() || 'Άγνωστος';
                 const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                const hours = parseFloat(row.querySelector('.hours-input').value) || 0;
-                const defaultShift = row.querySelector('.shift-input') ? row.querySelector('.shift-input').value : 'morning';
+                
+                const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
+                const hours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+                const defaultShift = dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning';
+
                 const wage = rate * hours;
                 workingEmployeesCount++;
 
@@ -1743,9 +1751,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const name = row.querySelector('.name-input').value.trim();
                 if (name) {
                     const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                    const fallbackHours = parseFloat(row.querySelector('.hours-input').value) || 0;
                     
                     const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
+                    const fallbackHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
                     const shiftType = dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning';
 
                     const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayOfWeek}"]`);
