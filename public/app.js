@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginPassword = document.getElementById('loginPassword');
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const installAppBtn = document.getElementById('installAppBtn');
     const secretTapTitle = document.getElementById('secretTapTitle');
 
     const loginFormArea = document.getElementById('loginFormArea');
@@ -1453,6 +1454,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // --- PWA / Service Worker Εγκατάσταση ---
+    let deferredPrompt;
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registered!', reg.scope))
+            .catch(err => console.error('Service Worker registration failed:', err));
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Ακύρωση της προεπιλεγμένης συμπεριφοράς (αυτόματη εμφάνιση)
+        e.preventDefault();
+        // Αποθήκευση του event για να το καλέσουμε αργότερα
+        deferredPrompt = e;
+        // Εμφάνιση του κουμπιού εγκατάστασης
+        if (installAppBtn) installAppBtn.classList.remove('hidden');
+    });
+
+    if (installAppBtn) {
+        installAppBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            // Εμφάνιση του prompt εγκατάστασης στον χρήστη
+            deferredPrompt.prompt();
+            // Αναμονή για την επιλογή του χρήστη
+            const { outcome } = await deferredPrompt.userChoice;
+            // Καθαρισμός του prompt και απόκρυψη του κουμπιού
+            deferredPrompt = null;
+            installAppBtn.classList.add('hidden');
+        });
+    }
 
     // Εκκίνηση Εφαρμογής - Έλεγχος Auth αντί για άμεσο φόρτωμα
     checkAuth();
