@@ -1,4 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Auth DOM Στοιχεία ---
+    const loginContainer = document.getElementById('loginContainer');
+    const appContainer = document.getElementById('appContainer');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const secretTapTitle = document.getElementById('secretTapTitle');
+
+    const loginFormArea = document.getElementById('loginFormArea');
+    const registerFormArea = document.getElementById('registerFormArea');
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
+    const showLoginBtn = document.getElementById('showLoginBtn');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const registerEmail = document.getElementById('registerEmail');
+    const registerPassword = document.getElementById('registerPassword');
+    const registerStoreName = document.getElementById('registerStoreName');
+    const registerBtn = document.getElementById('registerBtn');
+
     // --- Επιλογή Στοιχείων DOM ---
     const recordDateEl = document.getElementById('recordDate');
     const posRevenueEl = document.getElementById('posRevenue');
@@ -73,6 +92,155 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEditRecordDate = null;
     let foodCostChart = null;
 
+    // --- Auth Λογική ---
+    const getToken = () => localStorage.getItem('token');
+
+    const checkAuth = () => {
+        const token = getToken();
+        if (token) {
+            loginContainer.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            // Εφόσον συνδέθηκε, φορτώνουμε τα δεδομένα
+            renderCalendar();
+            updateDashExpensesUI();
+            updateCalculations();
+            fetchDashboardData();
+        } else {
+            loginContainer.classList.remove('hidden');
+            appContainer.classList.add('hidden');
+        }
+    };
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value;
+            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    loginEmail.value = '';
+                    loginPassword.value = '';
+                    checkAuth(); // Προχωράει στο Dashboard
+                } else {
+                    alert(data.error || 'Λάθος στοιχεία.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Αδυναμία σύνδεσης με τον server.');
+            }
+        });
+    }
+
+    // --- Λογική Εναλλαγής & Εγγραφής ---
+    if (showRegisterBtn && showLoginBtn) {
+        showRegisterBtn.addEventListener('click', () => {
+            loginFormArea.classList.add('hidden');
+            registerFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Δημιουργήστε λογαριασμό για το νέο σας κατάστημα';
+        });
+
+        showLoginBtn.addEventListener('click', () => {
+            registerFormArea.classList.add('hidden');
+            loginFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Συνδεθείτε για να διαχειριστείτε το κατάστημά σας';
+        });
+    }
+
+    if (registerBtn) {
+        registerBtn.addEventListener('click', async () => {
+            const email = registerEmail.value.trim();
+            const password = registerPassword.value;
+            const storeName = registerStoreName.value.trim();
+
+            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
+
+            try {
+                registerBtn.disabled = true;
+                registerBtn.textContent = 'Δημιουργία...';
+
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, store_name: storeName })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // Αυτόματο Login μετά την επιτυχημένη εγγραφή
+                    const loginRes = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    const loginData = await loginRes.json();
+                    
+                    if (loginRes.ok) {
+                        localStorage.setItem('token', loginData.token);
+                        registerEmail.value = '';
+                        registerPassword.value = '';
+                        registerStoreName.value = '';
+                        checkAuth(); // Προχωράει κατευθείαν στο Dashboard!
+                    } else {
+                        alert('Η εγγραφή πέτυχε, αλλά απέτυχε η αυτόματη σύνδεση. Παρακαλώ συνδεθείτε χειροκίνητα.');
+                        showLoginBtn.click();
+                        loginEmail.value = email; 
+                    }
+                } else {
+                    alert(data.error || 'Σφάλμα κατά την εγγραφή.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Αδυναμία σύνδεσης με τον server.');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Δημιουργία Λογαριασμού';
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            checkAuth(); // Επιστροφή στην οθόνη login
+        });
+    }
+
+    // --- Secret Tap (Λειτουργία Υπαλλήλου) ---
+    let tapCount = 0;
+    let tapTimer = null;
+
+    if (secretTapTitle) {
+        secretTapTitle.addEventListener('click', () => {
+            tapCount++;
+            clearTimeout(tapTimer);
+
+            tapTimer = setTimeout(() => {
+                tapCount = 0;
+            }, 2000);
+
+            if (tapCount >= 5) {
+                tapCount = 0;
+                clearTimeout(tapTimer);
+                
+                const pin = prompt('Εισάγετε το PIN Ιδιοκτήτη:');
+                if (pin === '1234') {
+                    const adminElements = document.querySelectorAll('.admin-only');
+                    adminElements.forEach(el => el.classList.remove('hidden'));
+                } else if (pin !== null) {
+                    alert('Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
+                }
+            }
+        });
+    }
+
     // --- Κεντρικές Συναρτήσεις Δεδομένων & Γραφήματος ---
     const refreshChartData = (records) => {
         if (!foodCostChart) return;
@@ -106,7 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const month = currentDate.getMonth() + 1;
         const year = currentDate.getFullYear();
         try {
-            const response = await fetch(`http://localhost:3000/api/daily-records/${month}/${year}`);
+            const response = await fetch(`/api/daily-records/${month}/${year}`, {
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
+            if (response.status === 401 || response.status === 403) return logoutBtn.click();
+
             if (response.ok) {
                 const records = await response.json();
                 currentMonthlyRecords = records;
@@ -152,7 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Πρώτα τραβάμε τα αναλυτικά ταμεία για να έχουμε τα ημερήσια δεδομένα
             let records = [];
-            const recordsResponse = await fetch(`http://localhost:3000/api/daily-records/${month}/${year}`);
+            const recordsResponse = await fetch(`/api/daily-records/${month}/${year}`, {
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
             if (recordsResponse.ok) {
                 records = await recordsResponse.json();
                 currentMonthlyRecords = records;
@@ -160,7 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to fetch daily records');
             }
 
-            const response = await fetch(`http://localhost:3000/api/monthly-report/${month}/${year}`);
+            const response = await fetch(`/api/monthly-report/${month}/${year}`, {
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
             if (response.ok) {
                 const data = await response.json();
                 currentReportData = data;
@@ -295,9 +471,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const response = await fetch('http://localhost:3000/api/monthly-report', {
+            const response = await fetch('/api/monthly-report', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}` 
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -620,9 +799,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const workedEmployees = Array.from(checkboxes).map(cb => cb.value);
 
         try {
-            const response = await fetch(`http://localhost:3000/api/daily-records/${currentEditRecordId}`, {
+            const response = await fetch(`/api/daily-records/${currentEditRecordId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}` 
+                },
                 body: JSON.stringify({
                     date: currentEditRecordDate,
                     daily_revenue: newRevenue,
@@ -649,8 +831,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteRecord = async (id) => {
         if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την εγγραφή;')) return;
         try {
-            const response = await fetch(`http://localhost:3000/api/daily-records/${id}`, {
-                method: 'DELETE'
+            const response = await fetch(`/api/daily-records/${id}`, {
+                method: 'DELETE',
+                headers: { 
+                    'Authorization': `Bearer ${getToken()}` 
+                }
             });
             if (response.ok) {
                 fetchMonthlyReport(); // Ανανεώνουμε αμέσως τη λίστα
@@ -792,9 +977,12 @@ document.addEventListener('DOMContentLoaded', () => {
             saveModalDayBtn.disabled = true;
             saveModalDayBtn.textContent = 'Αποθήκευση...';
 
-            const response = await fetch('http://localhost:3000/api/daily-records', {
+            const response = await fetch('/api/daily-records', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}` 
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -1076,10 +1264,11 @@ document.addEventListener('DOMContentLoaded', () => {
             saveDailyBtn.classList.add('opacity-75', 'cursor-not-allowed');
             saveDailyBtn.textContent = 'Αποθήκευση...';
 
-            const response = await fetch('http://localhost:3000/api/daily-records', {
+            const response = await fetch('/api/daily-records', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -1114,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error saving data:', error);
-            alert('Αδυναμία σύνδεσης με τον server (localhost:3000). Βεβαιωθείτε ότι ο server τρέχει.');
+            alert('Αδυναμία σύνδεσης με τον server. Βεβαιωθείτε ότι ο server τρέχει.');
             resetSaveButton();
         }
     });
@@ -1171,11 +1360,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Αρχικό render ημερολογίου & εξόδων
-    renderCalendar();
-    updateDashExpensesUI();
-
-    // Αρχικός υπολογισμός για να εμφανιστούν τα μηδενικά
-    updateCalculations();
-    fetchDashboardData();
+    // Εκκίνηση Εφαρμογής - Έλεγχος Auth αντί για άμεσο φόρτωμα
+    checkAuth();
 });

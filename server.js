@@ -2,6 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { initDB } = require('./db');
 
 const app = express();
@@ -22,15 +26,177 @@ app.get('/', (req, res) => {
 // Εκκίνηση server και αρχικοποίηση Βάσης Δεδομένων
 const pool = require('./db');
 
-app.post('/api/daily-records', async (req, res) => {
+// Middleware ταυτοποίησης για προσθήκη υποστήριξης Multi-Tenancy
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Μη εξουσιοδοτημένη πρόσβαση. Απουσιάζει το token.' });
+
+  jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret', (err, user) => {
+    if (err) return res.status(403).json({ error: 'Το token δεν είναι έγκυρο.' });
+    req.user = user; 
+    req.user.storeId = user.store_id || 1; // Εξασφάλιση του storeId μέσω middleware
+    next();
+  });
+};
+
+// --- Endpoints Ταυτοποίησης (Auth) ---
+
+app.post('/api/register', async (req, res) => {
   try {
+    const { email, password, store_id } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Παρακαλώ συμπληρώστε email και κωδικό.' });
+
+    // Έλεγχος αν το email υπάρχει ήδη
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Το email χρησιμοποιείται ήδη.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Εύρεση του επόμενου διαθέσιμου store_id (μέγιστο υπάρχον + 1)
+    const maxStoreQuery = await pool.query('SELECT MAX(store_id) FROM users');
+    const maxStoreId = maxStoreQuery.rows[0].max || 0;
+    const assignedStoreId = maxStoreId + 1;
+
+    const query = `
+      INSERT INTO users (email, password_hash, store_id)
+      VALUES ($1, $2, $3) RETURNING id, email, store_id
+    `;
+    const result = await pool.query(query, [email, hashedPassword, assignedStoreId]);
+
+    res.status(201).json({ message: 'Ο χρήστης δημιουργήθηκε επιτυχώς!', user: result.rows[0] });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την εγγραφή.' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Παρακαλώ συμπληρώστε email και κωδικό.' });
+
+    const query = 'SELECT * FROM users WHERE email = $1';
+    const result = await pool.query(query, [email]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Λάθος email ή κωδικός.' });
+    }
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Λάθος email ή κωδικός.' });
+    }
+
+    const token = jwt.sign(
+      { user_id: user.id, store_id: user.store_id || 1 },
+      process.env.JWT_SECRET || 'your_jwt_secret',
+      { expiresIn: '24h' }
+    );
+
+    res.json({ token, store_id: user.store_id, email: user.email });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την σύνδεση.' });
+  }
+});
+
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Παρακαλώ εισάγετε το email σας.' });
+
+    const userQuery = 'SELECT * FROM users WHERE email = $1';
+    const userResult = await pool.query(userQuery, [email]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Δεν βρέθηκε χρήστης με αυτό το email.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    // Λήξη σε 1 ώρα
+    const tokenExpiry = new Date(Date.now() + 3600000); 
+
+    await pool.query(
+      'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE email = $3',
+      [resetToken, tokenExpiry, email]
+    );
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // Προεπιλογή, μπορείς να το αλλάξεις αν χρησιμοποιείς άλλον πάροχο
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Δυναμική κατασκευή του URL με βάση το host
+    const domain = req.headers.host || 'localhost:3000';
+    const resetUrl = `http://${domain}/reset-password.html?token=${resetToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Επαναφορά Κωδικού Πρόσβασης - Μεροκαματάκι',
+      text: `Έχετε ζητήσει επαναφορά του κωδικού σας.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό πρόσβασης:\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`
+    };
+
+    await transporter.sendMail(mailOptions);
+    
+    res.json({ message: 'Το email επαναφοράς εστάλη επιτυχώς.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Ελέγξτε τις ρυθμίσεις του SMTP.' });
+  }
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
+    }
+
+    const query = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiry > NOW()';
+    const result = await pool.query(query, [token]);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Το token είναι μη έγκυρο ή έχει λήξει.' });
+    }
+
+    const user = result.rows[0];
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
+      [hashedPassword, user.id]
+    );
+
+    res.json({ message: 'Ο κωδικός σας ενημερώθηκε επιτυχώς!' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την επαναφορά κωδικού.' });
+  }
+});
+
+// --- Τέλος Endpoints Ταυτοποίησης ---
+
+app.post('/api/daily-records', authenticateToken, async (req, res) => {
+  try {
+    const store_id = req.user.storeId;
     const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses } = req.body;
     
     const query = `
-      INSERT INTO dashboard_daily_records (date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO dashboard_daily_records (store_id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `;
-    const values = [date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([])];
+    const values = [store_id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([])];
     
     await pool.query(query, values);
     
@@ -41,17 +207,18 @@ app.post('/api/daily-records', async (req, res) => {
   }
 });
 
-app.get('/api/daily-records/:month/:year', async (req, res) => {
+app.get('/api/daily-records/:month/:year', authenticateToken, async (req, res) => {
   try {
+    const store_id = req.user.storeId;
     const { month, year } = req.params;
     
     const query = `
       SELECT id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses
       FROM dashboard_daily_records
-      WHERE EXTRACT(MONTH FROM date) = $1 AND EXTRACT(YEAR FROM date) = $2
+      WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
       ORDER BY date ASC
     `;
-    const result = await pool.query(query, [month, year]);
+    const result = await pool.query(query, [store_id, month, year]);
     
     res.json(result.rows);
   } catch (error) {
@@ -60,17 +227,18 @@ app.get('/api/daily-records/:month/:year', async (req, res) => {
   }
 });
 
-app.put('/api/daily-records/:id', async (req, res) => {
+app.put('/api/daily-records/:id', authenticateToken, async (req, res) => {
   try {
+    const store_id = req.user.storeId;
     const { id } = req.params;
     const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses } = req.body;
     
     const query = `
       UPDATE dashboard_daily_records
-      SET date = $1, daily_revenue = $2, cash_revenue = $3, pos_revenue = $4, total_expenses = $5, food_cost_percentage = $6, worked_employees = $7, detailed_expenses = $8
-      WHERE id = $9
+      SET date = $2, daily_revenue = $3, cash_revenue = $4, pos_revenue = $5, total_expenses = $6, food_cost_percentage = $7, worked_employees = $8, detailed_expenses = $9
+      WHERE id = $1 AND store_id = $10
     `;
-    const values = [date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), id];
+    const values = [id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), store_id];
     
     await pool.query(query, values);
     
@@ -81,11 +249,12 @@ app.put('/api/daily-records/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/daily-records/:id', async (req, res) => {
+app.delete('/api/daily-records/:id', authenticateToken, async (req, res) => {
   try {
+    const store_id = req.user.storeId;
     const { id } = req.params;
-    const query = 'DELETE FROM dashboard_daily_records WHERE id = $1';
-    await pool.query(query, [id]);
+    const query = 'DELETE FROM dashboard_daily_records WHERE id = $1 AND store_id = $2';
+    await pool.query(query, [id, store_id]);
     
     res.json({ message: 'Η καταγραφή διαγράφηκε επιτυχώς!' });
   } catch (error) {
@@ -94,17 +263,18 @@ app.delete('/api/daily-records/:id', async (req, res) => {
   }
 });
 
-app.get('/api/monthly-report/:month/:year', async (req, res) => {
+app.get('/api/monthly-report/:month/:year', authenticateToken, async (req, res) => {
   try {
+    const store_id = req.user.storeId;
     const { month, year } = req.params;
     
     // Έλεγχος αν υπάρχει ήδη "κλεισμένος" μήνας
     const summaryQuery = `
       SELECT total_revenue, total_expenses, fixed_costs, net_profit 
       FROM monthly_summaries 
-      WHERE month = $1 AND year = $2
+      WHERE store_id = $1 AND month = $2 AND year = $3
     `;
-    const summaryResult = await pool.query(summaryQuery, [month, year]);
+    const summaryResult = await pool.query(summaryQuery, [store_id, month, year]);
     
     if (summaryResult.rows.length > 0) {
       return res.json(summaryResult.rows[0]);
@@ -116,9 +286,9 @@ app.get('/api/monthly-report/:month/:year', async (req, res) => {
         COALESCE(SUM(daily_revenue), 0) as total_revenue,
         COALESCE(SUM(total_expenses), 0) as total_expenses
       FROM dashboard_daily_records
-      WHERE EXTRACT(MONTH FROM date) = $1 AND EXTRACT(YEAR FROM date) = $2
+      WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
     `;
-    const dailyResult = await pool.query(dailyQuery, [month, year]);
+    const dailyResult = await pool.query(dailyQuery, [store_id, month, year]);
     
     const total_revenue = parseFloat(dailyResult.rows[0].total_revenue);
     const total_expenses = parseFloat(dailyResult.rows[0].total_expenses);
@@ -131,27 +301,28 @@ app.get('/api/monthly-report/:month/:year', async (req, res) => {
   }
 });
 
-app.post('/api/monthly-report', async (req, res) => {
+app.post('/api/monthly-report', authenticateToken, async (req, res) => {
   try {
+    const store_id = req.user.storeId;
     const { month, year, total_revenue, total_expenses, fixed_costs, net_profit, clearData } = req.body;
     
     const query = `
-      INSERT INTO monthly_summaries (month, year, total_revenue, total_expenses, fixed_costs, net_profit)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (month, year) DO UPDATE 
+      INSERT INTO monthly_summaries (store_id, month, year, total_revenue, total_expenses, fixed_costs, net_profit)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (store_id, month, year) DO UPDATE 
       SET total_revenue = EXCLUDED.total_revenue,
           total_expenses = EXCLUDED.total_expenses,
           fixed_costs = EXCLUDED.fixed_costs,
           net_profit = EXCLUDED.net_profit
     `;
-    await pool.query(query, [month, year, total_revenue, total_expenses, fixed_costs, net_profit]);
+    await pool.query(query, [store_id, month, year, total_revenue, total_expenses, fixed_costs, net_profit]);
     
     if (clearData) {
       const deleteQuery = `
         DELETE FROM dashboard_daily_records
-        WHERE EXTRACT(MONTH FROM date) = $1 AND EXTRACT(YEAR FROM date) = $2
+        WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
       `;
-      await pool.query(deleteQuery, [month, year]);
+      await pool.query(deleteQuery, [store_id, month, year]);
     }
     
     res.status(201).json({ message: 'Ο μήνας έκλεισε επιτυχώς!' });
