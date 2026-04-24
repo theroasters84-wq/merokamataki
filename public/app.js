@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const monthlyFixedCostsEl = document.getElementById('monthlyFixedCosts');
     const weeklyFixedDisplayEl = document.getElementById('weeklyFixedDisplay');
+    const editFixedCostsBtn = document.getElementById('editFixedCostsBtn');
 
     const employeeListEl = document.getElementById('employeeList');
     const addEmployeeBtn = document.getElementById('addEmployeeBtn');
@@ -106,6 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (token) {
             loginContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
+            
+            // Φόρτωση παγίων εξόδων από την τοπική μνήμη (εφόσον υπάρχουν)
+            const savedFixedCosts = localStorage.getItem('merokamataki_fixed_costs');
+            if (savedFixedCosts) {
+                monthlyFixedCostsEl.value = savedFixedCosts;
+                monthlyFixedCostsEl.disabled = true;
+                if (editFixedCostsBtn) {
+                    editFixedCostsBtn.textContent = 'Επεξεργασία';
+                    editFixedCostsBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                }
+            } else {
+                monthlyFixedCostsEl.disabled = false;
+                if (editFixedCostsBtn) {
+                    editFixedCostsBtn.textContent = 'Αποθήκευση';
+                    editFixedCostsBtn.className = 'bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                }
+            }
+
             // Εφόσον συνδέθηκε, φορτώνουμε τα δεδομένα
             fetchEmployees();
             renderCalendar();
@@ -796,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Highlight επιλεγμένης (ή σημερινής) μέρας
             const selectedDate = new Date(recordDateEl.value || new Date());
             if (day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
-                dayDiv.classList.add('ring-2', 'ring-primary', 'bg-blue-50/30');
+                dayDiv.classList.add('ring-2', 'ring-primary', 'bg-blue-50/30', 'today-cell');
             }
 
             // --- Εύρεση εργαζομένων για αυτή τη μέρα ---
@@ -813,11 +832,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (worked.length > 0) {
                     employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px]">' + 
                         worked.map(emp => {
-                            if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 truncate" title="${emp}">${emp}</span>`;
+                            if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
                             const name = emp.staff_id || 'Άγνωστος';
                             let emoji = emp.shift_type === 'morning' ? '☀️ ' : (emp.shift_type === 'night' ? '🌙 ' : (emp.shift_type === 'split' ? '⚡ ' : ''));
                             let slotsStr = emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '';
-                            return `<div class="text-[10px] md:text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
+                            return `<div class="text-[10px] md:text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
                         }).join('') + 
                         '</div>';
                 }
@@ -846,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         workingEmployees.map(emp => {
                             let emoji = emp.shift === 'morning' ? '☀️ ' : (emp.shift === 'night' ? '🌙 ' : (emp.shift === 'split' ? '⚡ ' : ''));
                             let slotsStr = emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '';
-                            return `<div class="text-[10px] md:text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
+                            return `<div class="text-[10px] md:text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
                         }).join('') + 
                         '</div>';
                 }
@@ -870,6 +889,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             calendarGrid.appendChild(dayDiv);
         }
+
+        // Αυτόματο scroll στη σημερινή ημέρα για καλύτερο UX
+        setTimeout(() => {
+            const todayCell = calendarGrid.querySelector('.today-cell');
+            if (todayCell) {
+                todayCell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }, 100);
     };
 
     const modalShiftsList = document.getElementById('modalShiftsList');
@@ -1541,9 +1568,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Event Listeners για Real-time Υπολογισμούς ---
-    [posRevenueEl, cashRevenueEl, actualCashEl, monthlyFixedCostsEl].forEach(el => {
+    [posRevenueEl, cashRevenueEl, actualCashEl].forEach(el => {
         el.addEventListener('input', updateCalculations);
     });
+
+    // Ενημέρωση των υπολογισμών κατά την πληκτρολόγηση παγίων (χωρίς αποθήκευση)
+    monthlyFixedCostsEl.addEventListener('input', updateCalculations);
+
+    // Διαχείριση Κουμπιού Παγίων Εξόδων
+    if (editFixedCostsBtn) {
+        editFixedCostsBtn.addEventListener('click', () => {
+            if (monthlyFixedCostsEl.disabled) {
+                // Ξεκλείδωμα για επεξεργασία
+                monthlyFixedCostsEl.disabled = false;
+                monthlyFixedCostsEl.focus();
+                editFixedCostsBtn.textContent = 'Αποθήκευση';
+                editFixedCostsBtn.className = 'bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+            } else {
+                // Αποθήκευση και κλείδωμα
+                localStorage.setItem('merokamataki_fixed_costs', monthlyFixedCostsEl.value);
+                monthlyFixedCostsEl.disabled = true;
+                editFixedCostsBtn.textContent = 'Επεξεργασία';
+                editFixedCostsBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                updateCalculations();
+            }
+        });
+    }
 
     [posTotal, drawerCash, zReceipt].forEach(el => {
         el.addEventListener('input', updateModalDrawerStatus);

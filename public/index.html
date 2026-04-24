@@ -115,11 +115,13 @@
         <div id="dashboardView">
             <!-- Ημερολόγιο -->
             <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 mb-8">
-                <div class="grid grid-cols-7 gap-2 mb-2 text-center text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                    <div>Δευ</div><div>Τρι</div><div>Τετ</div><div>Πεμ</div><div>Παρ</div><div>Σαβ</div><div>Κυρ</div>
-                </div>
-                <div id="calendarGrid" class="grid grid-cols-7 gap-2 auto-rows-fr">
-                    <!-- Το Grid 7x5 (ή 7x6) θα δημιουργηθεί δυναμικά μέσω JS -->
+                <div class="overflow-x-auto pb-4 custom-scrollbar">
+                    <div class="grid grid-cols-7 gap-2 mb-2 text-center text-sm font-semibold text-gray-500 uppercase tracking-wider min-w-[700px]">
+                        <div>Δευ</div><div>Τρι</div><div>Τετ</div><div>Πεμ</div><div>Παρ</div><div>Σαβ</div><div>Κυρ</div>
+                    </div>
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-2 auto-rows-fr min-w-[700px]">
+                        <!-- Το Grid 7x5 (ή 7x6) θα δημιουργηθεί δυναμικά μέσω JS -->
+                    </div>
                 </div>
             </div>
 
@@ -197,7 +199,8 @@
                             <label for="monthlyFixedCosts" class="block text-sm font-medium text-gray-700 mb-1">Μηνιαία Πάγια Έξοδα (€)</label>
                             <p class="text-xs text-gray-500 mb-2">Ενοίκιο, ρεύμα, νερό, λογιστής κλπ.</p>
                             <div class="flex gap-2 items-center">
-                                <input type="number" id="monthlyFixedCosts" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="π.χ. 2500" min="0" step="0.01">
+                            <input type="number" id="monthlyFixedCosts" class="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors" placeholder="π.χ. 2500" min="0" step="0.01">
+                            <button type="button" id="editFixedCostsBtn" class="bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap">Αποθήκευση</button>
                                 <span class="text-sm font-medium text-gray-600 bg-white px-2 py-2 border rounded-lg whitespace-nowrap">
                                     = <span id="weeklyFixedDisplay">0,00 €</span> /εβδ
                                 </span>
