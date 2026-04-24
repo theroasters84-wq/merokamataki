@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Manager - Μεροκαματάκι</title>
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/merokamataki.png">
     <meta name="theme-color" content="#3b82f6">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -36,11 +37,11 @@
             <form id="loginFormArea" class="space-y-5">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="loginEmail" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
+                    <input type="email" id="loginEmail" autocomplete="username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Κωδικός Πρόσβασης</label>
-                    <input type="password" id="loginPassword" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
+                    <input type="password" id="loginPassword" autocomplete="current-password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
                 </div>
                 
                 <div class="flex items-center justify-between">
@@ -64,11 +65,11 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="registerEmail" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
+                    <input type="email" id="registerEmail" autocomplete="username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Κωδικός Πρόσβασης</label>
-                    <input type="password" id="registerPassword" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
+                    <input type="password" id="registerPassword" autocomplete="new-password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
                 </div>
                 
                 <button type="button" id="registerBtn" class="w-full bg-secondary hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md mt-4">
@@ -480,30 +481,30 @@
 
     <!-- Set PIN Modal (Υποχρεωτικό για νέους χρήστες) -->
     <div id="setPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
+        <form onsubmit="return false;" class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
             <h3 class="text-xl font-bold text-gray-800 mb-2">Ορισμός PIN Ιδιοκτήτη</h3>
             <p class="text-sm text-gray-600 mb-4">Για την προστασία των δεδομένων σας, παρακαλώ ορίστε ένα νέο PIN.</p>
-            <input type="password" id="newPinInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
-            <button id="saveSetPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Αποθήκευση PIN</button>
-        </div>
+            <input type="password" id="newPinInput" autocomplete="new-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button type="button" id="saveSetPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Αποθήκευση PIN</button>
+        </form>
     </div>
 
     <!-- Verify PIN Modal (Secret Tap) -->
     <div id="verifyPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
+        <form onsubmit="return false;" class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-800">Κρυφό Ξεκλείδωμα</h3>
-                <button id="closeVerifyPinBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+                <button type="button" id="closeVerifyPinBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
             </div>
             <p class="text-sm text-gray-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
-            <input type="password" id="verifyPinInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
-            <button id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3">
+            <input type="password" id="verifyPinInput" autocomplete="current-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button type="button" id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3">
                 Ξεκλείδωμα
             </button>
             <div class="text-center">
-                <button id="forgotPinBtn" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα το PIN</button>
+                <button type="button" id="forgotPinBtn" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα το PIN</button>
             </div>
-        </div>
+        </form>
     </div>
 
     <script src="app.js"></script>

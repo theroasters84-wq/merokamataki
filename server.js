@@ -301,7 +301,7 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/employees/bulk', authenticateToken, async (req, res) => {
-  const client = await pool.connect();
+  const client = await pool.getClient();
   try {
     await client.query('BEGIN');
     // Καθαρίζουμε τους παλιούς για το κατάστημα και βάζουμε τους νέους με τη μία (Συγχρονισμός)
