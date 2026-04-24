@@ -105,6 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDashExpensesUI();
             updateCalculations();
             fetchDashboardData();
+            
+            // Έλεγχος αν ο ιδιοκτήτης δεν έχει ορίσει PIN ακόμα
+            if (localStorage.getItem('hasPin') === 'false') {
+                const setPinModal = document.getElementById('setPinModal');
+                if (setPinModal) setPinModal.classList.remove('hidden');
+            }
         } else {
             loginContainer.classList.remove('hidden');
             appContainer.classList.add('hidden');
@@ -126,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (res.ok) {
                     localStorage.setItem('token', data.token);
+                    localStorage.setItem('hasPin', data.hasPin);
                     loginEmail.value = '';
                     loginPassword.value = '';
                     checkAuth(); // Προχωράει στο Dashboard
@@ -184,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (loginRes.ok) {
                         localStorage.setItem('token', loginData.token);
+                        localStorage.setItem('hasPin', loginData.hasPin);
                         registerEmail.value = '';
                         registerPassword.value = '';
                         registerStoreName.value = '';
@@ -230,13 +238,99 @@ document.addEventListener('DOMContentLoaded', () => {
                 tapCount = 0;
                 clearTimeout(tapTimer);
                 
-                const pin = prompt('Εισάγετε το PIN Ιδιοκτήτη:');
-                if (pin === '1234') {
+                if (localStorage.getItem('hasPin') === 'true') {
+                    const verifyPinModal = document.getElementById('verifyPinModal');
+                    const verifyPinInput = document.getElementById('verifyPinInput');
+                    if (verifyPinModal && verifyPinInput) {
+                        verifyPinInput.value = '';
+                        verifyPinModal.classList.remove('hidden');
+                        verifyPinInput.focus();
+                    }
+                } else {
+                    // Αν δεν έχει οριστεί PIN, του ζητάμε να ορίσει
+                    const setPinModal = document.getElementById('setPinModal');
+                    if (setPinModal) setPinModal.classList.remove('hidden');
+                }
+            }
+        });
+    }
+
+    // --- Λογική PIN Modals ---
+    const setPinModal = document.getElementById('setPinModal');
+    const newPinInput = document.getElementById('newPinInput');
+    const saveSetPinBtn = document.getElementById('saveSetPinBtn');
+
+    if (saveSetPinBtn) {
+        saveSetPinBtn.addEventListener('click', async () => {
+            const pin = newPinInput.value.trim();
+            if (!pin) return alert('Παρακαλώ εισάγετε PIN.');
+            try {
+                const res = await fetch('/api/pin/set', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ pin })
+                });
+                if (res.ok) {
+                    localStorage.setItem('hasPin', 'true');
+                    setPinModal.classList.add('hidden');
+                    alert('Το PIN αποθηκεύτηκε επιτυχώς!');
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Σφάλμα κατά την αποθήκευση PIN.');
+                }
+            } catch (err) {
+                alert('Σφάλμα επικοινωνίας με τον server.');
+            }
+        });
+    }
+
+    const verifyPinModal = document.getElementById('verifyPinModal');
+    const verifyPinInput = document.getElementById('verifyPinInput');
+    const verifyPinBtn = document.getElementById('verifyPinBtn');
+    const closeVerifyPinBtn = document.getElementById('closeVerifyPinBtn');
+    const forgotPinBtn = document.getElementById('forgotPinBtn');
+
+    if (closeVerifyPinBtn) closeVerifyPinBtn.addEventListener('click', () => verifyPinModal.classList.add('hidden'));
+
+    if (verifyPinBtn) {
+        verifyPinBtn.addEventListener('click', async () => {
+            const pin = verifyPinInput.value.trim();
+            if (!pin) return;
+            try {
+                const res = await fetch('/api/pin/verify', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ pin })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    verifyPinModal.classList.add('hidden');
                     const adminElements = document.querySelectorAll('.admin-only');
                     adminElements.forEach(el => el.classList.remove('hidden'));
-                } else if (pin !== null) {
-                    alert('Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
+                } else {
+                    alert(data.error || 'Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
                 }
+            } catch (err) {
+                alert('Σφάλμα επικοινωνίας με τον server.');
+            }
+        });
+    }
+
+    if (forgotPinBtn) {
+        forgotPinBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/pin/forgot', { method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` } });
+                const data = await res.json();
+                if (res.ok) alert('Ελέγξτε το email σας για οδηγίες ανάκτησης του PIN.');
+                else alert(data.error || 'Σφάλμα κατά την αποστολή.');
+            } catch (err) {
+                alert('Σφάλμα επικοινωνίας με τον server.');
             }
         });
     }

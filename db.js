@@ -65,6 +65,10 @@ const initDB = async () => {
     // Ασφαλής προσθήκη της νέας στήλης σε περίπτωση που ο πίνακας υπήρχε ήδη από πριν
     await pool.query(`ALTER TABLE monthly_summaries ADD COLUMN IF NOT EXISTS fixed_costs DECIMAL(10, 2) DEFAULT 0;`);
     
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_pin VARCHAR(255);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_reset_token VARCHAR(255);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_reset_token_expiry TIMESTAMP;`);
+    
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS worked_employees JSONB DEFAULT '[]'::jsonb;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS detailed_expenses JSONB DEFAULT '[]'::jsonb;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS cash_revenue DECIMAL(10, 2) DEFAULT 0;`);

@@ -99,7 +99,12 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token, store_id: user.store_id, email: user.email });
+    res.json({ 
+      token, 
+      store_id: user.store_id, 
+      email: user.email,
+      hasPin: (user.admin_pin !== null && user.admin_pin !== '')
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Σφάλμα κατά την σύνδεση.' });
@@ -182,6 +187,103 @@ app.post('/api/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Σφάλμα κατά την επαναφορά κωδικού.' });
+  }
+});
+
+// --- Endpoints PIN Ιδιοκτήτη ---
+
+app.post('/api/pin/set', authenticateToken, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const userId = req.user.user_id;
+    if (!pin) return res.status(400).json({ error: 'Παρακαλώ δώστε το νέο PIN.' });
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+    await pool.query('UPDATE users SET admin_pin = $1 WHERE id = $2', [hashedPin, userId]);
+    
+    res.json({ message: 'Το PIN ορίστηκε επιτυχώς!' });
+  } catch (error) {
+    console.error('Error setting PIN:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά τον ορισμό του PIN.' });
+  }
+});
+
+app.post('/api/pin/verify', authenticateToken, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const userId = req.user.user_id;
+    if (!pin) return res.status(400).json({ error: 'Παρακαλώ δώστε το PIN.' });
+    
+    const result = await pool.query('SELECT admin_pin FROM users WHERE id = $1', [userId]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Χρήστης δεν βρέθηκε.' });
+    
+    const user = result.rows[0];
+    if (!user.admin_pin) return res.status(400).json({ error: 'Δεν έχει οριστεί PIN. Παρακαλώ ορίστε νέο PIN.' });
+    
+    const isMatch = await bcrypt.compare(pin, user.admin_pin);
+    res.json({ success: isMatch });
+  } catch (error) {
+    console.error('Error verifying PIN:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την επαλήθευση του PIN.' });
+  }
+});
+
+app.post('/api/pin/forgot', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
+    
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'Χρήστης δεν βρέθηκε.' });
+    
+    const email = userResult.rows[0].email;
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 3600000); // Λήξη σε 1 ώρα
+
+    await pool.query(
+      'UPDATE users SET pin_reset_token = $1, pin_reset_token_expiry = $2 WHERE id = $3',
+      [resetToken, tokenExpiry, userId]
+    );
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const domain = req.headers.host || 'localhost:3000';
+    const resetUrl = `http://${domain}/reset-pin.html?token=${resetToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Επαναφορά PIN Ιδιοκτήτη - Μεροκαματάκι',
+      text: `Έχετε ζητήσει επαναφορά του PIN Ιδιοκτήτη.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο PIN:\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ message: 'Το email επαναφοράς PIN εστάλη επιτυχώς.' });
+  } catch (error) {
+    console.error('Forgot PIN error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email επαναφοράς PIN.' });
+  }
+});
+
+app.post('/api/pin/reset', async (req, res) => {
+  try {
+    const { token, newPin } = req.body;
+    if (!token || !newPin) return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
+    const query = 'SELECT * FROM users WHERE pin_reset_token = $1 AND pin_reset_token_expiry > NOW()';
+    const result = await pool.query(query, [token]);
+    if (result.rows.length === 0) return res.status(400).json({ error: 'Το token είναι μη έγκυρο ή έχει λήξει.' });
+    const user = result.rows[0];
+    const hashedPin = await bcrypt.hash(newPin, 10);
+    await pool.query('UPDATE users SET admin_pin = $1, pin_reset_token = NULL, pin_reset_token_expiry = NULL WHERE id = $2', [hashedPin, user.id]);
+    res.json({ message: 'Το PIN σας ενημερώθηκε επιτυχώς!' });
+  } catch (error) {
+    console.error('Reset PIN error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την επαναφορά του PIN.' });
   }
 });
 

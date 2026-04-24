@@ -456,6 +456,34 @@
         </div>
     </div>
 
+    <!-- Set PIN Modal (Υποχρεωτικό για νέους χρήστες) -->
+    <div id="setPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Ορισμός PIN Ιδιοκτήτη</h3>
+            <p class="text-sm text-gray-600 mb-4">Για την προστασία των δεδομένων σας, παρακαλώ ορίστε ένα νέο PIN.</p>
+            <input type="password" id="newPinInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button id="saveSetPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Αποθήκευση PIN</button>
+        </div>
+    </div>
+
+    <!-- Verify PIN Modal (Secret Tap) -->
+    <div id="verifyPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Κρυφό Ξεκλείδωμα</h3>
+                <button id="closeVerifyPinBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
+            <input type="password" id="verifyPinInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3">
+                Ξεκλείδωμα
+            </button>
+            <div class="text-center">
+                <button id="forgotPinBtn" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα το PIN</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
