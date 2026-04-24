@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
             // Εφόσον συνδέθηκε, φορτώνουμε τα δεδομένα
+            fetchEmployees();
             renderCalendar();
             updateDashExpensesUI();
             updateCalculations();
@@ -363,6 +364,92 @@ document.addEventListener('DOMContentLoaded', () => {
             openDayModal(year, month, day, 'closure');
         });
     }
+
+    // --- Διαχείριση Ανάκτησης & Αποθήκευσης Προσωπικού (Μόνιμη Βάση) ---
+    const fetchEmployees = async () => {
+        try {
+            const response = await fetch('/api/employees', {
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                employeeListEl.innerHTML = '';
+                data.forEach(emp => {
+                    const row = createEmployeeRow();
+                    employeeListEl.appendChild(row);
+
+                    row.querySelector('.name-input').value = emp.name;
+                    row.querySelector('.display-name').textContent = emp.name;
+                    row.querySelector('.rate-input').value = emp.hourly_rate || 0;
+
+                    const schedule = typeof emp.schedule === 'string' ? JSON.parse(emp.schedule) : (emp.schedule || {});
+
+                    Object.keys(schedule).forEach(dayId => {
+                        const dayData = schedule[dayId];
+                        const wrapper = row.querySelector(`.day-wrapper[data-day="${dayId}"]`);
+                        if (wrapper) {
+                            wrapper.querySelector('.day-checkbox').checked = true;
+                            wrapper.querySelector('.shift-input-day').value = dayData.shift || 'morning';
+                            wrapper.querySelector('.hours-input-day').value = dayData.hours !== undefined ? dayData.hours : 8;
+
+                            const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
+                            if (panel && dayData.time_slots) {
+                                dayData.time_slots.forEach(hour => {
+                                    const btn = panel.querySelector(`.time-slot-btn-day[data-hour="${hour}"]`);
+                                    if (btn) {
+                                        btn.classList.remove('bg-white', 'text-gray-600');
+                                        btn.classList.add('bg-primary', 'text-white', 'border-primary');
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                    row.querySelector('.edit-mode').classList.add('hidden');
+                    row.querySelector('.view-mode').classList.remove('hidden');
+                });
+                updateCalculations();
+                renderCalendar();
+            }
+        } catch (error) {
+            console.error('Failed to fetch employees:', error);
+        }
+    };
+
+    const saveEmployeesToServer = async () => {
+        const employees = [];
+        const employeeRows = employeeListEl.querySelectorAll('.employee-row');
+        employeeRows.forEach(row => {
+            const name = row.querySelector('.name-input').value.trim();
+            if (!name) return;
+            const hourly_rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+            const schedule = {};
+            row.querySelectorAll('.day-wrapper').forEach(wrapper => {
+                const dayId = wrapper.dataset.day;
+                const isActive = wrapper.querySelector('.day-checkbox').checked;
+                if (isActive) {
+                    const shift = wrapper.querySelector('.shift-input-day').value;
+                    const hours = parseFloat(wrapper.querySelector('.hours-input-day').value) || 0;
+                    const time_slots = [];
+                    const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
+                    if (panel) {
+                        panel.querySelectorAll('.time-slot-btn-day.bg-primary').forEach(btn => time_slots.push(parseInt(btn.dataset.hour)));
+                    }
+                    schedule[dayId] = { shift, hours, time_slots };
+                }
+            });
+            employees.push({ name, hourly_rate, schedule });
+        });
+        try {
+            await fetch('/api/employees/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+                body: JSON.stringify({ employees })
+            });
+        } catch (error) {
+            console.error('Failed to save employees:', error);
+        }
+    };
 
     // --- Κεντρικές Συναρτήσεις Δεδομένων & Γραφήματος ---
     const refreshChartData = (records) => {
@@ -1540,6 +1627,10 @@ document.addEventListener('DOMContentLoaded', () => {
             displayName.textContent = name;
             editMode.classList.add('hidden');
             viewMode.classList.remove('hidden');
+            
+            updateCalculations();
+            renderCalendar();
+            saveEmployeesToServer(); // Αποθήκευση στη Βάση Δεδομένων!
         });
 
         viewMode.addEventListener('click', () => {
@@ -1598,6 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             div.remove();
             updateCalculations();
             renderCalendar();
+            saveEmployeesToServer(); // Διαγραφή από τη Βάση Δεδομένων!
         });
 
         return div;

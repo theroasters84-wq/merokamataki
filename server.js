@@ -289,6 +289,45 @@ app.post('/api/pin/reset', async (req, res) => {
 
 // --- Τέλος Endpoints Ταυτοποίησης ---
 
+// --- Endpoints Προσωπικού ---
+app.get('/api/employees', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM dashboard_employees WHERE store_id = $1 ORDER BY id ASC', [req.user.storeId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+app.post('/api/employees/bulk', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Καθαρίζουμε τους παλιούς για το κατάστημα και βάζουμε τους νέους με τη μία (Συγχρονισμός)
+    await client.query('DELETE FROM dashboard_employees WHERE store_id = $1', [req.user.storeId]);
+    
+    const { employees } = req.body;
+    if (employees && employees.length > 0) {
+      for (const emp of employees) {
+        await client.query(
+          `INSERT INTO dashboard_employees (store_id, name, hourly_rate, schedule, daily_wage, days_per_week)
+           VALUES ($1, $2, $3, $4, 0, 0)`,
+          [req.user.storeId, emp.name, emp.hourly_rate, JSON.stringify(emp.schedule)]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error saving employees:', error);
+    res.status(500).json({ error: 'Server Error' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/daily-records', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
