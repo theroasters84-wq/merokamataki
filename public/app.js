@@ -1439,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 0, label: 'Κυ', title: 'Κυριακή' }
         ];
 
-        let daysHtml = '<div class="flex justify-between items-end w-full text-xs font-medium text-gray-600 mt-2 px-1">';
+        let daysHtml = '<div class="flex justify-start sm:justify-between items-end w-full text-xs font-medium text-gray-600 mt-2 px-1 overflow-x-auto pb-2 gap-4 sm:gap-1">';
         let allSlotsPanels = '';
 
         daysArr.forEach(d => {
@@ -1451,7 +1451,7 @@ document.addEventListener('DOMContentLoaded', () => {
             allSlotsPanels += sHtml;
 
             daysHtml += `
-                <div class="flex flex-col items-center gap-1 day-wrapper" data-day="${d.id}">
+                <div class="flex flex-col items-center gap-1 day-wrapper flex-shrink-0" data-day="${d.id}">
                     <div class="flex justify-center items-center gap-1 w-full">
                         <select class="shift-input-day text-[12px] p-0.5 border border-gray-300 rounded bg-white outline-none focus:ring-primary text-center cursor-pointer w-7 h-6" title="Βάρδια">
                             <option value="morning">☀️</option>

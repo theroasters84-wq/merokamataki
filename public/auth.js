@@ -29,6 +29,38 @@ export function initAuth({ onAuthSuccess }) {
     const closeVerifyPinBtn = document.getElementById('closeVerifyPinBtn');
     const forgotPinBtn = document.getElementById('forgotPinBtn');
 
+    const enableAdminMode = () => {
+        const adminElements = document.querySelectorAll('.admin-only');
+        adminElements.forEach(el => el.classList.remove('hidden'));
+
+        let exitAdminBtn = document.getElementById('exitAdminBtn');
+        if (!exitAdminBtn) {
+            exitAdminBtn = document.createElement('button');
+            exitAdminBtn.id = 'exitAdminBtn';
+            exitAdminBtn.innerHTML = '🔒 Έξοδος Admin';
+            exitAdminBtn.className = 'bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded shadow font-bold hover:bg-red-700 transition-colors cursor-pointer text-xs md:text-sm mr-2';
+            
+            if (logoutBtn && logoutBtn.parentNode) {
+                logoutBtn.parentNode.insertBefore(exitAdminBtn, logoutBtn);
+            } else {
+                document.body.appendChild(exitAdminBtn);
+            }
+
+            exitAdminBtn.addEventListener('click', () => {
+                localStorage.removeItem('isAdmin');
+                disableAdminMode();
+            });
+        }
+        exitAdminBtn.classList.remove('hidden');
+    };
+
+    const disableAdminMode = () => {
+        const adminElements = document.querySelectorAll('.admin-only');
+        adminElements.forEach(el => el.classList.add('hidden'));
+        const exitAdminBtn = document.getElementById('exitAdminBtn');
+        if (exitAdminBtn) exitAdminBtn.classList.add('hidden');
+    };
+
     const checkAuth = () => {
         const token = getToken();
         if (token) {
@@ -40,10 +72,17 @@ export function initAuth({ onAuthSuccess }) {
                 if (setPinModal) setPinModal.classList.remove('hidden');
             }
 
+            if (localStorage.getItem('isAdmin') === 'true') {
+                enableAdminMode();
+            } else {
+                disableAdminMode();
+            }
+
             if (onAuthSuccess) onAuthSuccess();
         } else {
             loginContainer.classList.remove('hidden');
             appContainer.classList.add('hidden');
+            disableAdminMode();
         }
     };
 
@@ -132,6 +171,7 @@ export function initAuth({ onAuthSuccess }) {
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('isAdmin');
         checkAuth(); // Επιστροφή στην οθόνη login
     };
 
@@ -201,8 +241,8 @@ export function initAuth({ onAuthSuccess }) {
                 const data = await res.json();
                 if (res.ok && data.success) {
                     verifyPinModal.classList.add('hidden');
-                    const adminElements = document.querySelectorAll('.admin-only');
-                    adminElements.forEach(el => el.classList.remove('hidden'));
+                    localStorage.setItem('isAdmin', 'true');
+                    enableAdminMode();
                 } else {
                     alert(data.error || 'Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
                 }
