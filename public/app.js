@@ -338,10 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const employeeRows = employeeListEl.querySelectorAll('.employee-row');
                 employeeRows.forEach(row => {
                     const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                    const hours = parseFloat(row.querySelector('.hours-input').value) || 0;
-                    const wage = rate * hours;
-                    const days = row.querySelectorAll('.day-checkbox:checked').length;
-                    totalPersonnelWeekly += (wage * days);
                     row.querySelectorAll('.day-checkbox:checked').forEach(cb => {
                         const dayWrapper = row.querySelector(`.day-wrapper[data-day="${cb.dataset.day}"]`);
                         const dayHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
