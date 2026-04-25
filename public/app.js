@@ -95,13 +95,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthlyFixedCostsEl.disabled = true;
                 if (editFixedCostsBtn) {
                     editFixedCostsBtn.textContent = 'Επεξεργασία';
-                    editFixedCostsBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                    editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
                 }
             } else {
                 monthlyFixedCostsEl.disabled = false;
                 if (editFixedCostsBtn) {
                     editFixedCostsBtn.textContent = 'Αποθήκευση';
-                    editFixedCostsBtn.className = 'bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                    editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
                 }
             }
 
@@ -1395,13 +1395,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthlyFixedCostsEl.disabled = false;
                 monthlyFixedCostsEl.focus();
                 editFixedCostsBtn.textContent = 'Αποθήκευση';
-                editFixedCostsBtn.className = 'bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
             } else {
                 // Αποθήκευση και κλείδωμα
                 localStorage.setItem('merokamataki_fixed_costs', monthlyFixedCostsEl.value);
                 monthlyFixedCostsEl.disabled = true;
                 editFixedCostsBtn.textContent = 'Επεξεργασία';
-                editFixedCostsBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
                 updateCalculations();
             }
         });
@@ -1569,7 +1569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     employeeListEl.innerHTML = '';
 
     addEmployeeBtn.addEventListener('click', () => {
-        employeeListEl.appendChild(createEmployeeRow());
+        employeeListEl.prepend(createEmployeeRow());
     });
 
     // --- Αποθήκευση στον Server (POST request) ---
