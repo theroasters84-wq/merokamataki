@@ -23,6 +23,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// --- WAKE UP ENDPOINT ΓΙΑ ΔΩΡΕΑΝ SERVERS ---
+// Endpoint για να κρατάμε τον server ξύπνιο μέσω εξωτερικών pings (π.χ. cron-job.org)
+app.get('/api/keep_alive', (req, res) => {
+    res.status(200).json({ 
+        status: 'alive', 
+        app: 'merokamataki',
+        time: new Date().toISOString() 
+    });
+});
+
 // Εκκίνηση server και αρχικοποίηση Βάσης Δεδομένων
 const pool = require('./db');
 
