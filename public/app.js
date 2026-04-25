@@ -587,18 +587,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Εύρεση εργαζομένων για αυτή τη μέρα ---
             const targetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const savedRecord = currentMonthlyRecords.find(r => {
+            const savedRecords = currentMonthlyRecords.filter(r => {
                 const d = new Date(r.date);
                 return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
             });
 
             let employeesHtml = '';
-            if (savedRecord) {
-                let worked = [];
-                try { worked = typeof savedRecord.worked_employees === 'string' ? JSON.parse(savedRecord.worked_employees) : (savedRecord.worked_employees || []); } catch(e){}
-                if (worked.length > 0) {
+            if (savedRecords.length > 0) {
+                let allWorked = [];
+                savedRecords.forEach(savedRecord => {
+                    let worked = [];
+                    try { worked = typeof savedRecord.worked_employees === 'string' ? JSON.parse(savedRecord.worked_employees) : (savedRecord.worked_employees || []); } catch(e){}
+                    allWorked = allWorked.concat(worked);
+                });
+                
+                if (allWorked.length > 0) {
                     employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px]">' + 
-                        worked.map(emp => {
+                        allWorked.map(emp => {
                             if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
                             const name = emp.staff_id || 'Άγνωστος';
                             let emoji = emp.shift_type === 'morning' ? '☀️ ' : (emp.shift_type === 'night' ? '🌙 ' : (emp.shift_type === 'split' ? '⚡ ' : ''));
@@ -779,6 +784,12 @@ document.addEventListener('DOMContentLoaded', () => {
             zReceipt.value = '';
             if (modalCashierName) modalCashierName.value = '';
         }
+        // Πάντα κενό για νέα βάρδια (ή προσθήκη εξόδων)
+        currentModalExpenses = [];
+        posTotal.value = '';
+        drawerCash.value = '';
+        zReceipt.value = '';
+        if (modalCashierName) modalCashierName.value = '';
         
         updateModalExpensesUI();
         modalDrawerStatus.classList.add('hidden');
@@ -1162,16 +1173,13 @@ document.addEventListener('DOMContentLoaded', () => {
             detailed_expenses: currentModalExpenses,
             cashier_name: modalCashierName ? modalCashierName.value.trim() : ''
         };
-        const existingRecord = currentMonthlyRecords.find(r => r.date && r.date.startsWith(dateStr));
-        const isEdit = !!existingRecord;
-        const url = isEdit ? `/api/daily-records/${existingRecord.id}` : '/api/daily-records';
-        const method = isEdit ? 'PUT' : 'POST';
 
         try {
             saveModalDayBtn.disabled = true;
             saveModalDayBtn.textContent = 'Αποθήκευση...';
 
-            const response = isEdit ? await apiUpdateDailyRecord(existingRecord.id, payload) : await apiSaveDailyRecord(payload);
+            // Αποθηκεύουμε πάντα ως νέα εγγραφή (νέα βάρδια)
+            const response = await apiSaveDailyRecord(payload);
 
             if (response.ok) {
                 saveModalDayBtn.classList.replace('bg-primary', 'bg-green-600');
@@ -1287,32 +1295,18 @@ document.addEventListener('DOMContentLoaded', () => {
             cumulativeAgatho += dailyAgatho;
         });
         
-        // Έλεγχος αν η σημερινή μέρα έχει ήδη αποθηκευτεί
+        // Προσθήκη σημερινών (μη αποθηκευμένων) στη σούμα (από τη φόρμα αν είναι ορατή)
+        cumulativeRev += officialRevenue;
+        cumulativeAgatho += materials;
+
+        // Βρίσκουμε τα σημερινά αποθηκευμένα έσοδα
         const dateStr = recordDateEl.value || new Date().toISOString().split('T')[0];
-        const existingRecord = currentMonthlyRecords.find(r => r.date && r.date.startsWith(dateStr));
-        
-        if (!existingRecord) {
-            // Προσθήκη σημερινών (μη αποθηκευμένων) στη σούμα
-            cumulativeRev += officialRevenue;
-            cumulativeAgatho += materials;
-        } else {
-            // Αν επεξεργαζόμαστε υπάρχουσα μέρα, αφαιρούμε τα παλιά της και βάζουμε τα νέα
-            const oldRev = parseFloat(existingRecord.daily_revenue) || 0;
-            let oldAgatho = 0;
-            try {
-                const oldExpenses = typeof existingRecord.detailed_expenses === 'string' ? JSON.parse(existingRecord.detailed_expenses) : (existingRecord.detailed_expenses || []);
-                oldExpenses.forEach(exp => {
-                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
-                        oldAgatho += parseFloat(exp.amount) || 0;
-                    }
-                });
-            } catch(e) {
-                const oldFc = parseFloat(existingRecord.food_cost_percentage) || 0;
-                oldAgatho = (oldFc * oldRev) / 100;
-            }
-            cumulativeRev = cumulativeRev - oldRev + officialRevenue;
-            cumulativeAgatho = cumulativeAgatho - oldAgatho + materials;
-        }
+        const existingRecords = currentMonthlyRecords.filter(r => r.date && r.date.startsWith(dateStr));
+        let todaysSavedRev = 0;
+        existingRecords.forEach(r => {
+            todaysSavedRev += (parseFloat(r.daily_revenue) || 0);
+        });
+        const totalTodayRevenue = todaysSavedRev + officialRevenue;
 
         if (cumulativeRev > 0) {
             foodCostPercentage = (cumulativeAgatho / cumulativeRev) * 100;
@@ -1392,7 +1386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Καθαρό Κέρδος/Ζημιά Ημέρας = Τζίρος - Ημερήσιο Κόστος
-        const dailyProfit = officialRevenue - totalDailyCost;
+        const dailyProfit = totalTodayRevenue - totalDailyCost;
         dailyNetProfitEl.innerHTML = formatCurrency(dailyProfit);
         
         if (dailyProfit > 0) {
