@@ -1792,6 +1792,9 @@ document.addEventListener('DOMContentLoaded', () => {
         installAppBtn.addEventListener('click', async () => {
             if (!deferredPrompt) return;
             
+            // Απενεργοποίηση για αποφυγή διπλού κλικ που "μπλοκάρει" τον browser
+            installAppBtn.disabled = true;
+            
             // Εμφάνιση του prompt εγκατάστασης στον χρήστη
             deferredPrompt.prompt();
             // Αναμονή για την επιλογή του χρήστη
@@ -1799,8 +1802,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Καθαρισμός του prompt και απόκρυψη του κουμπιού
             deferredPrompt = null;
             installAppBtn.classList.add('hidden');
+            installAppBtn.disabled = false;
         });
     }
+
+    // Αν η εφαρμογή εγκατασταθεί επιτυχώς (ακόμα και από το μενού του browser), κρύβουμε το κουμπί
+    window.addEventListener('appinstalled', () => {
+        if (installAppBtn) installAppBtn.classList.add('hidden');
+        deferredPrompt = null;
+        console.log('Η εφαρμογή εγκαταστάθηκε επιτυχώς!');
+    });
 
     // Εκκίνηση Εφαρμογής - Έλεγχος Auth αντί για άμεσο φόρτωμα
     checkAuth();
