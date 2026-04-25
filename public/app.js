@@ -1,23 +1,9 @@
+import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
+import { initAuth } from './auth.js';
 document.addEventListener('DOMContentLoaded', () => {
     // --- Auth DOM Στοιχεία ---
-    const loginContainer = document.getElementById('loginContainer');
-    const appContainer = document.getElementById('appContainer');
-    const loginEmail = document.getElementById('loginEmail');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
     const installAppBtn = document.getElementById('installAppBtn');
-    const secretTapTitle = document.getElementById('secretTapTitle');
-
-    const loginFormArea = document.getElementById('loginFormArea');
-    const registerFormArea = document.getElementById('registerFormArea');
-    const showRegisterBtn = document.getElementById('showRegisterBtn');
-    const showLoginBtn = document.getElementById('showLoginBtn');
-    const authSubtitle = document.getElementById('authSubtitle');
-    const registerEmail = document.getElementById('registerEmail');
-    const registerPassword = document.getElementById('registerPassword');
-    const registerStoreName = document.getElementById('registerStoreName');
-    const registerBtn = document.getElementById('registerBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     // --- Επιλογή Στοιχείων DOM ---
     const recordDateEl = document.getElementById('recordDate');
@@ -101,15 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let foodCostChart = null;
 
     // --- Auth Λογική ---
-    const getToken = () => localStorage.getItem('token');
-
-    const checkAuth = () => {
-        const token = getToken();
-        if (token) {
-            loginContainer.classList.add('hidden');
-            appContainer.classList.remove('hidden');
-            
-            // Φόρτωση παγίων εξόδων από την τοπική μνήμη (εφόσον υπάρχουν)
+    const { checkAuth, logout } = initAuth({
+        onAuthSuccess: () => {
             const savedFixedCosts = localStorage.getItem('merokamataki_fixed_costs');
             if (savedFixedCosts) {
                 monthlyFixedCostsEl.value = savedFixedCosts;
@@ -126,241 +105,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Εφόσον συνδέθηκε, φορτώνουμε τα δεδομένα
             fetchEmployees();
             renderCalendar();
             updateDashExpensesUI();
             updateCalculations();
             fetchDashboardData();
-            
-            // Έλεγχος αν ο ιδιοκτήτης δεν έχει ορίσει PIN ακόμα
-            if (localStorage.getItem('hasPin') === 'false') {
-                const setPinModal = document.getElementById('setPinModal');
-                if (setPinModal) setPinModal.classList.remove('hidden');
-            }
-        } else {
-            loginContainer.classList.remove('hidden');
-            appContainer.classList.add('hidden');
         }
-    };
-
-    if (loginBtn) {
-        loginBtn.addEventListener('click', async () => {
-            const email = loginEmail.value.trim();
-            const password = loginPassword.value;
-            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
-
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('hasPin', data.hasPin);
-                    loginEmail.value = '';
-                    loginPassword.value = '';
-                    checkAuth(); // Προχωράει στο Dashboard
-                } else {
-                    alert(data.error || 'Λάθος στοιχεία.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Αδυναμία σύνδεσης με τον server.');
-            }
-        });
-    }
-
-    // --- Λογική Εναλλαγής & Εγγραφής ---
-    if (showRegisterBtn && showLoginBtn) {
-        showRegisterBtn.addEventListener('click', () => {
-            loginFormArea.classList.add('hidden');
-            registerFormArea.classList.remove('hidden');
-            if (authSubtitle) authSubtitle.textContent = 'Δημιουργήστε λογαριασμό για το νέο σας κατάστημα';
-        });
-
-        showLoginBtn.addEventListener('click', () => {
-            registerFormArea.classList.add('hidden');
-            loginFormArea.classList.remove('hidden');
-            if (authSubtitle) authSubtitle.textContent = 'Συνδεθείτε για να διαχειριστείτε το κατάστημά σας';
-        });
-    }
-
-    if (registerBtn) {
-        registerBtn.addEventListener('click', async () => {
-            const email = registerEmail.value.trim();
-            const password = registerPassword.value;
-            const storeName = registerStoreName.value.trim();
-
-            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
-
-            try {
-                registerBtn.disabled = true;
-                registerBtn.textContent = 'Δημιουργία...';
-
-                const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, store_name: storeName })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    // Αυτόματο Login μετά την επιτυχημένη εγγραφή
-                    const loginRes = await fetch('/api/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password })
-                    });
-                    const loginData = await loginRes.json();
-                    
-                    if (loginRes.ok) {
-                        localStorage.setItem('token', loginData.token);
-                        localStorage.setItem('hasPin', loginData.hasPin);
-                        registerEmail.value = '';
-                        registerPassword.value = '';
-                        registerStoreName.value = '';
-                        checkAuth(); // Προχωράει κατευθείαν στο Dashboard!
-                    } else {
-                        alert('Η εγγραφή πέτυχε, αλλά απέτυχε η αυτόματη σύνδεση. Παρακαλώ συνδεθείτε χειροκίνητα.');
-                        showLoginBtn.click();
-                        loginEmail.value = email; 
-                    }
-                } else {
-                    alert(data.error || 'Σφάλμα κατά την εγγραφή.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Αδυναμία σύνδεσης με τον server.');
-            } finally {
-                registerBtn.disabled = false;
-                registerBtn.textContent = 'Δημιουργία Λογαριασμού';
-            }
-        });
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('token');
-            checkAuth(); // Επιστροφή στην οθόνη login
-        });
-    }
-
-    // --- Secret Tap (Λειτουργία Υπαλλήλου) ---
-    let tapCount = 0;
-    let tapTimer = null;
-
-    if (secretTapTitle) {
-        secretTapTitle.addEventListener('click', () => {
-            tapCount++;
-            clearTimeout(tapTimer);
-
-            tapTimer = setTimeout(() => {
-                tapCount = 0;
-            }, 2000);
-
-            if (tapCount >= 5) {
-                tapCount = 0;
-                clearTimeout(tapTimer);
-                
-                if (localStorage.getItem('hasPin') === 'true') {
-                    const verifyPinModal = document.getElementById('verifyPinModal');
-                    const verifyPinInput = document.getElementById('verifyPinInput');
-                    if (verifyPinModal && verifyPinInput) {
-                        verifyPinInput.value = '';
-                        verifyPinModal.classList.remove('hidden');
-                        verifyPinInput.focus();
-                    }
-                } else {
-                    // Αν δεν έχει οριστεί PIN, του ζητάμε να ορίσει
-                    const setPinModal = document.getElementById('setPinModal');
-                    if (setPinModal) setPinModal.classList.remove('hidden');
-                }
-            }
-        });
-    }
-
-    // --- Λογική PIN Modals ---
-    const setPinModal = document.getElementById('setPinModal');
-    const newPinInput = document.getElementById('newPinInput');
-    const saveSetPinBtn = document.getElementById('saveSetPinBtn');
-
-    if (saveSetPinBtn) {
-        saveSetPinBtn.addEventListener('click', async () => {
-            const pin = newPinInput.value.trim();
-            if (!pin) return alert('Παρακαλώ εισάγετε PIN.');
-            try {
-                const res = await fetch('/api/pin/set', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getToken()}`
-                    },
-                    body: JSON.stringify({ pin })
-                });
-                if (res.ok) {
-                    localStorage.setItem('hasPin', 'true');
-                    setPinModal.classList.add('hidden');
-                    alert('Το PIN αποθηκεύτηκε επιτυχώς!');
-                } else {
-                    const data = await res.json();
-                    alert(data.error || 'Σφάλμα κατά την αποθήκευση PIN.');
-                }
-            } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
-            }
-        });
-    }
-
-    const verifyPinModal = document.getElementById('verifyPinModal');
-    const verifyPinInput = document.getElementById('verifyPinInput');
-    const verifyPinBtn = document.getElementById('verifyPinBtn');
-    const closeVerifyPinBtn = document.getElementById('closeVerifyPinBtn');
-    const forgotPinBtn = document.getElementById('forgotPinBtn');
-
-    if (closeVerifyPinBtn) closeVerifyPinBtn.addEventListener('click', () => verifyPinModal.classList.add('hidden'));
-
-    if (verifyPinBtn) {
-        verifyPinBtn.addEventListener('click', async () => {
-            const pin = verifyPinInput.value.trim();
-            if (!pin) return;
-            try {
-                const res = await fetch('/api/pin/verify', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getToken()}`
-                    },
-                    body: JSON.stringify({ pin })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    verifyPinModal.classList.add('hidden');
-                    const adminElements = document.querySelectorAll('.admin-only');
-                    adminElements.forEach(el => el.classList.remove('hidden'));
-                } else {
-                    alert(data.error || 'Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
-                }
-            } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
-            }
-        });
-    }
-
-    if (forgotPinBtn) {
-        forgotPinBtn.addEventListener('click', async () => {
-            try {
-                const res = await fetch('/api/pin/forgot', { method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` } });
-                const data = await res.json();
-                if (res.ok) alert('Ελέγξτε το email σας για οδηγίες ανάκτησης του PIN.');
-                else alert(data.error || 'Σφάλμα κατά την αποστολή.');
-            } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
-            }
-        });
-    }
+    });
 
     // --- Λογική Day Action Modal ---
     if (closeDayActionModalBtn) {
@@ -388,9 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Διαχείριση Ανάκτησης & Αποθήκευσης Προσωπικού (Μόνιμη Βάση) ---
     const fetchEmployees = async () => {
         try {
-            const response = await fetch('/api/employees', {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
+            const response = await apiFetchEmployees();
             if (response.ok) {
                 const data = await response.json();
                 employeeListEl.innerHTML = '';
@@ -461,11 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             employees.push({ name, hourly_rate, schedule });
         });
         try {
-            await fetch('/api/employees/bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-                body: JSON.stringify({ employees })
-            });
+            await apiSaveEmployeesBulk(employees);
         } catch (error) {
             console.error('Failed to save employees:', error);
         }
@@ -482,8 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         records.forEach(record => {
             const rev = parseFloat(record.daily_revenue) || 0;
-            const fc = parseFloat(record.food_cost_percentage) || 0;
-            const agatho = (fc * rev) / 100; // Ανακτούμε την πρώτη ύλη βάσει ποσοστού!
+            let agatho = 0;
+            try {
+                const expenses = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []);
+                expenses.forEach(exp => {
+                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
+                        agatho += parseFloat(exp.amount) || 0;
+                    }
+                });
+            } catch(e) {
+                // Fallback για παλιές εγγραφές χωρίς αναλυτικά δεδομένα
+                const fc = parseFloat(record.food_cost_percentage) || 0;
+                agatho = (fc * rev) / 100;
+            }
 
             cumulativeRev += rev;
             cumulativeAgatho += agatho;
@@ -504,10 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const month = currentDate.getMonth() + 1;
         const year = currentDate.getFullYear();
         try {
-            const response = await fetch(`/api/daily-records/${month}/${year}`, {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
-            if (response.status === 401 || response.status === 403) return logoutBtn.click();
+            const response = await apiFetchDailyRecords(month, year);
+            if (response.status === 401 || response.status === 403) return logout();
 
             if (response.ok) {
                 const records = await response.json();
@@ -554,9 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Πρώτα τραβάμε τα αναλυτικά ταμεία για να έχουμε τα ημερήσια δεδομένα
             let records = [];
-            const recordsResponse = await fetch(`/api/daily-records/${month}/${year}`, {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
+            const recordsResponse = await apiFetchDailyRecords(month, year);
             if (recordsResponse.ok) {
                 records = await recordsResponse.json();
                 currentMonthlyRecords = records;
@@ -564,9 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to fetch daily records');
             }
 
-            const response = await fetch(`/api/monthly-report/${month}/${year}`, {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
+            const response = await apiFetchMonthlyReport(month, year);
             if (response.ok) {
                 const data = await response.json();
                 currentReportData = data;
@@ -597,8 +347,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 let monthlyAgatho = 0;
                 records.forEach(record => {
                     const rev = parseFloat(record.daily_revenue) || 0;
-                    const fc = parseFloat(record.food_cost_percentage) || 0;
-                    monthlyAgatho += (fc * rev) / 100;
+                    let dailyAgatho = 0;
+                    try {
+                        const expenses = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []);
+                        expenses.forEach(exp => {
+                            if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
+                                dailyAgatho += parseFloat(exp.amount) || 0;
+                            }
+                        });
+                    } catch(e) {
+                        const fc = parseFloat(record.food_cost_percentage) || 0;
+                        dailyAgatho = (fc * rev) / 100;
+                    }
+                    monthlyAgatho += dailyAgatho;
                 });
                 
                 const avgFoodCost = totalRev > 0 ? (monthlyAgatho / totalRev) * 100 : 0;
@@ -718,14 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const response = await fetch('/api/monthly-report', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}` 
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await apiSaveMonthlyReport(payload);
 
             if (response.ok) {
                 alert('Ο μήνας έκλεισε επιτυχώς!');
@@ -1112,6 +866,15 @@ document.addEventListener('DOMContentLoaded', () => {
         editModalPosRevenue.value = record.pos_revenue !== undefined ? record.pos_revenue : record.daily_revenue;
         editModalCashRevenue.value = record.cash_revenue || '';
         editModalExpenses.value = record.total_expenses;
+        
+        // Υπολογισμός και εμφάνιση ΜΟΝΟ των Αγαθών (Πρώτων Υλών)
+        const fc = parseFloat(record.food_cost_percentage) || 0;
+        const rev = parseFloat(record.daily_revenue) || 0;
+        const originalMaterials = (fc * rev) / 100;
+        
+        editModalExpenses.value = originalMaterials.toFixed(2);
+        window.currentEditTotalExpenses = record.total_expenses;
+        window.currentEditOriginalMaterials = originalMaterials;
 
         // Δυναμική δημιουργία λίστας εργαζομένων
         editModalEmployeesList.innerHTML = '';
@@ -1165,17 +928,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const posRev = parseFloat(editModalPosRevenue.value) || 0;
         const cashRev = parseFloat(editModalCashRevenue.value) || 0;
         const newRevenue = posRev + cashRev;
-        const newExpenses = parseFloat(editModalExpenses.value);
+        const newMaterials = parseFloat(editModalExpenses.value) || 0;
 
-        if (isNaN(newRevenue) || isNaN(newExpenses) || newRevenue < 0 || newExpenses < 0) {
+        if (isNaN(newRevenue) || isNaN(newMaterials) || newRevenue < 0 || newMaterials < 0) {
             alert('Παρακαλώ εισάγετε έγκυρους αριθμούς.');
             return;
         }
 
         let newFoodCost = 0;
         if (newRevenue > 0) {
-            newFoodCost = (newExpenses / newRevenue) * 100;
+            newFoodCost = (newMaterials / newRevenue) * 100;
         }
+        
+        // Διατήρηση και ενημέρωση των συνολικών εξόδων
+        const materialsDiff = newMaterials - (window.currentEditOriginalMaterials || 0);
+        const newTotalExpenses = (parseFloat(window.currentEditTotalExpenses) || 0) + materialsDiff;
 
         // Συλλογή τικαρισμένων εργαζομένων
         const checkboxes = editModalEmployeesList.querySelectorAll('.edit-employee-checkbox:checked');
@@ -1190,22 +957,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            const response = await fetch(`/api/daily-records/${currentEditRecordId}`, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}` 
-                },
-                body: JSON.stringify({
+            const response = await apiUpdateDailyRecord(currentEditRecordId, {
                     date: currentEditRecordDate,
                     daily_revenue: newRevenue,
                     cash_revenue: cashRev,
                     pos_revenue: posRev,
-                    total_expenses: newExpenses,
+                    total_expenses: newTotalExpenses,
                     food_cost_percentage: newFoodCost,
                     worked_employees: workedEmployees
-                })
-            });
+                });
 
             if (response.ok) {
                 closeEditModal();
@@ -1222,12 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteRecord = async (id) => {
         if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την εγγραφή;')) return;
         try {
-            const response = await fetch(`/api/daily-records/${id}`, {
-                method: 'DELETE',
-                headers: { 
-                    'Authorization': `Bearer ${getToken()}` 
-                }
-            });
+            const response = await apiDeleteDailyRecord(id);
             if (response.ok) {
                 fetchMonthlyReport(); // Ανανεώνουμε αμέσως τη λίστα
             } else {
@@ -1393,14 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveModalDayBtn.disabled = true;
             saveModalDayBtn.textContent = 'Αποθήκευση...';
 
-            const response = await fetch(url, {
-                method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}` 
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = isEdit ? await apiUpdateDailyRecord(existingRecord.id, payload) : await apiSaveDailyRecord(payload);
 
             if (response.ok) {
                 saveModalDayBtn.classList.replace('bg-primary', 'bg-green-600');
@@ -1457,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Κεντρική Συνάρτηση Υπολογισμών ---
     const updateCalculations = () => {
         // 1. Υπολογισμός Food Cost (Ημέρας)
+        // 1. Υπολογισμός Κυλιόμενου Food Cost (Μήνα/Εβδομάδας)
         const posRev = parseFloat(posRevenueEl.value) || 0;
         const cashRev = parseFloat(cashRevenueEl.value) || 0;
         const zReceiptDash = parseFloat(actualCashEl.value) || 0;
@@ -1470,6 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // ΝΕΟ: Ταμειακή Συμφωνία
+        // Ταμειακή Συμφωνία
         const actualTotalRevenue = posRev + cashRev + drawerExpenses;
         const officialRevenue = zReceiptDash > 0 ? zReceiptDash : actualTotalRevenue;
 
@@ -1488,10 +1238,62 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             drawerStatusEl.classList.add('hidden');
         }
-
-        if (officialRevenue > 0) {
-            foodCostPercentage = (materials / officialRevenue) * 100;
          
+        // Υπολογισμός Κυλιόμενου Μέσου Όρου (Rolling Average)
+        let cumulativeRev = 0;
+        let cumulativeAgatho = 0;
+        
+        currentMonthlyRecords.forEach(r => {
+            const rev = parseFloat(r.daily_revenue) || 0;
+            cumulativeRev += rev;
+            
+            let dailyAgatho = 0;
+            try {
+                const expenses = typeof r.detailed_expenses === 'string' ? JSON.parse(r.detailed_expenses) : (r.detailed_expenses || []);
+                expenses.forEach(exp => {
+                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
+                        dailyAgatho += parseFloat(exp.amount) || 0;
+                    }
+                });
+            } catch(e) {
+                const fc = parseFloat(r.food_cost_percentage) || 0;
+                dailyAgatho = (fc * rev) / 100;
+            }
+            cumulativeAgatho += dailyAgatho;
+        });
+        
+        // Έλεγχος αν η σημερινή μέρα έχει ήδη αποθηκευτεί
+        const dateStr = recordDateEl.value || new Date().toISOString().split('T')[0];
+        const existingRecord = currentMonthlyRecords.find(r => r.date && r.date.startsWith(dateStr));
+        
+        if (!existingRecord) {
+            // Προσθήκη σημερινών (μη αποθηκευμένων) στη σούμα
+            cumulativeRev += officialRevenue;
+            cumulativeAgatho += materials;
+        } else {
+            // Αν επεξεργαζόμαστε υπάρχουσα μέρα, αφαιρούμε τα παλιά της και βάζουμε τα νέα
+            const oldRev = parseFloat(existingRecord.daily_revenue) || 0;
+            let oldAgatho = 0;
+            try {
+                const oldExpenses = typeof existingRecord.detailed_expenses === 'string' ? JSON.parse(existingRecord.detailed_expenses) : (existingRecord.detailed_expenses || []);
+                oldExpenses.forEach(exp => {
+                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
+                        oldAgatho += parseFloat(exp.amount) || 0;
+                    }
+                });
+            } catch(e) {
+                const oldFc = parseFloat(existingRecord.food_cost_percentage) || 0;
+                oldAgatho = (oldFc * oldRev) / 100;
+            }
+            cumulativeRev = cumulativeRev - oldRev + officialRevenue;
+            cumulativeAgatho = cumulativeAgatho - oldAgatho + materials;
+        }
+
+        if (cumulativeRev > 0) {
+            foodCostPercentage = (cumulativeAgatho / cumulativeRev) * 100;
+            
+            foodCostDisplayEl.textContent = foodCostPercentage.toFixed(1) + '%';
+            foodCostDisplayEl.className = 'text-2xl font-bold'; // Επαναφορά κλάσεων
 
             if (foodCostPercentage <= 30) {
                 foodCostDisplayEl.classList.add('text-green-500');
@@ -1851,14 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveDailyBtn.classList.add('opacity-75', 'cursor-not-allowed');
             saveDailyBtn.textContent = 'Αποθήκευση...';
 
-            const response = await fetch('/api/daily-records', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getToken()}`
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await apiSaveDailyRecord(payload);
 
             if (response.ok) {
                 // Φτιάχνουμε ένα μικρό εφέ επιτυχίας στο κουμπί
