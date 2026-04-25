@@ -1,4 +1,4 @@
-import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
+import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord, apiGetFixedCosts, apiSetFixedCosts } from './api.js';
 import { initAuth } from './auth.js';
 document.addEventListener('DOMContentLoaded', () => {
     // --- Auth DOM Στοιχεία ---
@@ -88,21 +88,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
-        onAuthSuccess: () => {
-            const savedFixedCosts = localStorage.getItem('merokamataki_fixed_costs');
-            if (savedFixedCosts) {
-                monthlyFixedCostsEl.value = savedFixedCosts;
-                monthlyFixedCostsEl.disabled = true;
-                if (editFixedCostsBtn) {
-                    editFixedCostsBtn.textContent = 'Επεξεργασία';
-                    editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+        onAuthSuccess: async () => {
+            try {
+                const res = await apiGetFixedCosts();
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.fixed_costs > 0) {
+                        monthlyFixedCostsEl.value = data.fixed_costs;
+                        monthlyFixedCostsEl.disabled = true;
+                        if (editFixedCostsBtn) {
+                            editFixedCostsBtn.textContent = 'Επεξεργασία';
+                            editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                        }
+                    } else {
+                        monthlyFixedCostsEl.disabled = false;
+                        if (editFixedCostsBtn) {
+                            editFixedCostsBtn.textContent = 'Αποθήκευση';
+                            editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
+                        }
+                    }
                 }
-            } else {
-                monthlyFixedCostsEl.disabled = false;
-                if (editFixedCostsBtn) {
-                    editFixedCostsBtn.textContent = 'Αποθήκευση';
-                    editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
-                }
+            } catch (e) {
+                console.error('Failed to fetch fixed costs', e);
             }
 
             fetchEmployees();
@@ -1389,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Διαχείριση Κουμπιού Παγίων Εξόδων
     if (editFixedCostsBtn) {
-        editFixedCostsBtn.addEventListener('click', () => {
+        editFixedCostsBtn.addEventListener('click', async () => {
             if (monthlyFixedCostsEl.disabled) {
                 // Ξεκλείδωμα για επεξεργασία
                 monthlyFixedCostsEl.disabled = false;
@@ -1398,7 +1405,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
             } else {
                 // Αποθήκευση και κλείδωμα
-                localStorage.setItem('merokamataki_fixed_costs', monthlyFixedCostsEl.value);
+                const val = parseFloat(monthlyFixedCostsEl.value) || 0;
+                try {
+                    editFixedCostsBtn.textContent = '...';
+                    await apiSetFixedCosts(val);
+                } catch (e) {
+                    console.error('Failed to save fixed costs', e);
+                }
                 monthlyFixedCostsEl.disabled = true;
                 editFixedCostsBtn.textContent = 'Επεξεργασία';
                 editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';

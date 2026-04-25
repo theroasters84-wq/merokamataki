@@ -70,6 +70,9 @@ const initDB = async () => {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_pin VARCHAR(255);`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_reset_token VARCHAR(255);`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_reset_token_expiry TIMESTAMP;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS default_fixed_costs DECIMAL(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS default_fixed_costs DECIMAL(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS default_fixed_costs DECIMAL(10, 2) DEFAULT 0;`);
     
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS worked_employees JSONB DEFAULT '[]'::jsonb;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS detailed_expenses JSONB DEFAULT '[]'::jsonb;`);

@@ -102,3 +102,17 @@ export const apiDeleteDailyRecord = async (id) => {
         headers: getHeaders()
     });
 };
+
+export const apiGetFixedCosts = async () => {
+    return await fetch('/api/settings/fixed-costs', {
+        headers: getHeaders()
+    });
+};
+
+export const apiSetFixedCosts = async (fixed_costs) => {
+    return await fetch('/api/settings/fixed-costs', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ fixed_costs })
+    });
+};

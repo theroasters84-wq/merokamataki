@@ -289,6 +289,28 @@ app.post('/api/pin/reset', async (req, res) => {
 
 // --- Τέλος Endpoints Ταυτοποίησης ---
 
+// --- Endpoints Ρυθμίσεων Καταστήματος ---
+app.get('/api/settings/fixed-costs', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT default_fixed_costs FROM users WHERE id = $1', [req.user.user_id]);
+    res.json({ fixed_costs: result.rows.length > 0 ? (result.rows[0].default_fixed_costs || 0) : 0 });
+  } catch (error) {
+    console.error('Error fetching fixed costs:', error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+app.post('/api/settings/fixed-costs', authenticateToken, async (req, res) => {
+  try {
+    const { fixed_costs } = req.body;
+    await pool.query('UPDATE users SET default_fixed_costs = $1 WHERE store_id = $2', [fixed_costs, req.user.storeId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error setting fixed costs:', error);
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 // --- Endpoints Προσωπικού ---
 app.get('/api/employees', authenticateToken, async (req, res) => {
   try {
