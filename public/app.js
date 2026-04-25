@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const breakEvenPointEl = document.getElementById('breakEvenPoint');
 
     const dailyOperatingCostEl = document.getElementById('dailyOperatingCost');
+    const dailyBreakEvenPointEl = document.getElementById('dailyBreakEvenPoint');
     const dailyNetProfitEl = document.getElementById('dailyNetProfit');
 
     // --- Ημερολόγιο & Modal DOM ---
@@ -1553,6 +1554,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalDailyCost = dailyFixedCost + dailyStaffCost + allDashExpenses;
 
         dailyOperatingCostEl.innerHTML = formatCurrency(totalDailyCost);
+
+        // Υπολογισμός Νεκρού Σημείου Ημέρας
+        let dailyBreakEven = 0;
+        if (grossMargin > 0) {
+            dailyBreakEven = (dailyFixedCost + dailyStaffCost) / grossMargin;
+        }
+        if (dailyBreakEvenPointEl) {
+            dailyBreakEvenPointEl.innerHTML = formatCurrency(isFinite(dailyBreakEven) && dailyBreakEven > 0 ? dailyBreakEven : 0);
+        }
 
         // Καθαρό Κέρδος/Ζημιά Ημέρας = Τζίρος - Ημερήσιο Κόστος
         const dailyProfit = officialRevenue - totalDailyCost;

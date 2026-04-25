@@ -245,11 +245,19 @@
                 <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col">
                     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Εικόνα Ημέρας</h2>
                     
-                    <div class="flex-grow flex flex-col justify-center space-y-6">
+                    <div class="flex-grow flex flex-col justify-center space-y-5">
                         <div>
                             <p class="text-sm text-gray-600 font-medium mb-1">Ημερήσιο Κόστος Λειτουργίας</p>
                             <p class="text-3xl font-bold text-gray-900 tracking-tight" id="dailyOperatingCost">0.00 <span class="text-xl font-normal text-gray-500">€</span></p>
                             <p class="text-xs text-gray-500 mt-1">Αναλογία Παγίων & Προσωπικού + Σημερινές Πρώτες Ύλες</p>
+                        </div>
+
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                            <p class="text-sm text-indigo-800 font-medium mb-1">Νεκρό Σημείο Ημέρας</p>
+                            <div class="flex items-end gap-2">
+                                <p class="text-2xl font-bold text-indigo-700" id="dailyBreakEvenPoint">0.00 <span class="text-lg font-normal text-indigo-500">€</span></p>
+                            </div>
+                            <p class="text-xs text-indigo-600 mt-1">Απαιτούμενος τζίρος για μηδενικό κέρδος (με ~30% Food Cost)</p>
                         </div>
 
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
