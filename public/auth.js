@@ -49,6 +49,7 @@ export function initAuth({ onAuthSuccess }) {
             exitAdminBtn.addEventListener('click', () => {
                 localStorage.removeItem('isAdmin');
                 disableAdminMode();
+                window.location.reload();
             });
         }
         exitAdminBtn.classList.remove('hidden');

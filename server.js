@@ -363,13 +363,13 @@ app.post('/api/employees/bulk', authenticateToken, async (req, res) => {
 app.post('/api/daily-records', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
-    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses } = req.body;
+    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body;
     
     const query = `
-      INSERT INTO dashboard_daily_records (store_id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO dashboard_daily_records (store_id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `;
-    const values = [store_id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([])];
+    const values = [store_id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), cashier_name || null];
     
     await pool.query(query, values);
     
@@ -386,7 +386,7 @@ app.get('/api/daily-records/:month/:year', authenticateToken, async (req, res) =
     const { month, year } = req.params;
     
     const query = `
-      SELECT id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses
+      SELECT id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name
       FROM dashboard_daily_records
       WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
       ORDER BY date ASC
@@ -404,14 +404,14 @@ app.put('/api/daily-records/:id', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
     const { id } = req.params;
-    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses } = req.body;
+    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body;
     
     const query = `
       UPDATE dashboard_daily_records
-      SET date = $2, daily_revenue = $3, cash_revenue = $4, pos_revenue = $5, total_expenses = $6, food_cost_percentage = $7, worked_employees = $8, detailed_expenses = $9
+      SET date = $2, daily_revenue = $3, cash_revenue = $4, pos_revenue = $5, total_expenses = $6, food_cost_percentage = $7, worked_employees = $8, detailed_expenses = $9, cashier_name = $11
       WHERE id = $1 AND store_id = $10
     `;
-    const values = [id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), store_id];
+    const values = [id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), store_id, cashier_name || null];
     
     await pool.query(query, values);
     

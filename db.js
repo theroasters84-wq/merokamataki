@@ -78,6 +78,7 @@ const initDB = async () => {
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS detailed_expenses JSONB DEFAULT '[]'::jsonb;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS cash_revenue DECIMAL(10, 2) DEFAULT 0;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS pos_revenue DECIMAL(10, 2) DEFAULT 0;`);
+    await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS cashier_name VARCHAR(255);`);
 
     // Ευέλικτο Ωρομίσθιο: Προσθήκη στηλών για hourly rate και default hours
     await pool.query(`ALTER TABLE dashboard_employees ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(10, 2) DEFAULT 0;`);

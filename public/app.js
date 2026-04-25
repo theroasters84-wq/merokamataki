@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const drawerStatusEl = document.getElementById('drawerStatus');
     const foodCostDisplayEl = document.getElementById('foodCostDisplay');
     const saveDailyBtn = document.getElementById('saveDailyBtn');
+    const dashCashierName = document.getElementById('dashCashierName');
 
     // Νέα DOM στοιχεία εξόδων για το Κεντρικό Dashboard
     const dashExpenseDesc = document.getElementById('dashExpenseDesc');
@@ -79,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeEditModalBtn = document.getElementById('closeEditModalBtn');
     const closeEditModalIconBtn = document.getElementById('closeEditModalIconBtn');
     const saveEditModalBtn = document.getElementById('saveEditModalBtn');
+    const editModalCashierName = document.getElementById('editModalCashierName');
 
     let currentReportData = null;
     let currentMonthlyRecords = [];
@@ -408,8 +410,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-gray-50';
                         tr.innerHTML = `
-                            <td class="px-6 py-3 text-sm text-gray-800">${dateStr}</td>
-                            <td class="px-6 py-3 text-sm text-gray-800 font-medium">${formatCurrency(parseFloat(record.daily_revenue))}</td>
+                            <td class="px-6 py-3 text-sm text-gray-800">
+                                ${dateStr}
+                                ${record.cashier_name ? '<br><span class="text-xs text-gray-500">Ταμίας: ' + record.cashier_name + '</span>' : ''}
+                            </td>
+                            <td class="px-6 py-3 text-sm text-gray-800">
+                                <span class="font-medium">${formatCurrency(parseFloat(record.daily_revenue))}</span>
+                                <br><span class="text-xs text-gray-500">POS: ${formatCurrency(parseFloat(record.pos_revenue || 0))} | Μετρ: ${formatCurrency(parseFloat(record.cash_revenue || 0))}</span>
+                            </td>
                             <td class="px-6 py-3 text-sm text-gray-800">${formatCurrency(parseFloat(record.total_expenses))}</td>
                             <td class="px-6 py-3 text-sm font-semibold ${fcColor}">${parseFloat(record.food_cost_percentage).toFixed(1)}%</td>
                             <td class="px-6 py-3 text-sm text-center">
@@ -513,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const zReceipt = document.getElementById('zReceipt');
     const modalDrawerStatus = document.getElementById('modalDrawerStatus');
     const saveModalDayBtn = document.getElementById('saveModalDayBtn');
+    const modalCashierName = document.getElementById('modalCashierName');
 
     // --- Κατάσταση ---
     let foodCostPercentage = 0;
@@ -677,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (modalShiftsSection) modalShiftsSection.classList.remove('hidden');
             if (modalRevenueSection) modalRevenueSection.classList.remove('hidden');
-            saveModalDayBtn.textContent = 'Αποθήκευση Ημέρας';
+            saveModalDayBtn.textContent = 'Κλείσιμο Βάρδιας';
         }
 
         // Διαμόρφωση ημερομηνίας
@@ -766,11 +775,13 @@ document.addEventListener('DOMContentLoaded', () => {
             posTotal.value = savedRecord.pos_revenue || '';
             drawerCash.value = savedRecord.cash_revenue || '';
             zReceipt.value = savedRecord.daily_revenue || '';
+            if (modalCashierName) modalCashierName.value = savedRecord.cashier_name || '';
         } else {
             currentModalExpenses = [];
             posTotal.value = '';
             drawerCash.value = '';
             zReceipt.value = '';
+            if (modalCashierName) modalCashierName.value = '';
         }
         
         updateModalExpensesUI();
@@ -883,6 +894,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.currentEditTotalExpenses = record.total_expenses;
         window.currentEditOriginalMaterials = originalMaterials;
 
+        if (editModalCashierName) editModalCashierName.value = record.cashier_name || '';
+
         // Δυναμική δημιουργία λίστας εργαζομένων
         editModalEmployeesList.innerHTML = '';
         const employeeRows = employeeListEl.querySelectorAll('.employee-row');
@@ -971,7 +984,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     pos_revenue: posRev,
                     total_expenses: newTotalExpenses,
                     food_cost_percentage: newFoodCost,
-                    worked_employees: workedEmployees
+                    worked_employees: workedEmployees,
+                    cashier_name: editModalCashierName ? editModalCashierName.value.trim() : ''
                 });
 
             if (response.ok) {
@@ -1138,14 +1152,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = {
             date: dateStr,
             daily_revenue: officialRevenue,
-            cash_revenue: actualCashRevenue,
+            cash_revenue: cash,
             pos_revenue: pos,
             total_expenses: totalExpenses,
             food_cost_percentage: fcPercentage,
             worked_employees: workedEmployees,
-            detailed_expenses: currentModalExpenses
+            detailed_expenses: currentModalExpenses,
+            cashier_name: modalCashierName ? modalCashierName.value.trim() : ''
         };
-
         const existingRecord = currentMonthlyRecords.find(r => r.date && r.date.startsWith(dateStr));
         const isEdit = !!existingRecord;
         const url = isEdit ? `/api/daily-records/${existingRecord.id}` : '/api/daily-records';
@@ -1165,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setTimeout(() => {
                     saveModalDayBtn.classList.replace('bg-green-600', 'bg-primary');
-                    saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Αποθήκευση Ημέρας';
+                    saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Κλείσιμο Βάρδιας';
                     saveModalDayBtn.disabled = false;
                     closeDayModal();
                 }, 1500);
@@ -1173,13 +1187,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 alert('Προέκυψε σφάλμα κατά την αποθήκευση.');
                 saveModalDayBtn.disabled = false;
-                saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Αποθήκευση Ημέρας';
+                saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Κλείσιμο Βάρδιας';
             }
         } catch (error) {
             console.error('Error:', error);
             alert('Αδυναμία σύνδεσης με τον server.');
             saveModalDayBtn.disabled = false;
-            saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Αποθήκευση Ημέρας';
+            saveModalDayBtn.textContent = window.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Κλείσιμο Βάρδιας';
         }
     });
 
@@ -1653,14 +1667,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = {
             date: dateStr,
             daily_revenue: officialRevenue,
-            cash_revenue: actualCashRevenue,
+            cash_revenue: cashRev,
             pos_revenue: posRev,
             total_expenses: totalExpenses,
             food_cost_percentage: fcPercentage,
             worked_employees: workedEmployees,
-            detailed_expenses: currentDashboardExpenses
+            detailed_expenses: currentDashboardExpenses,
+            cashier_name: dashCashierName ? dashCashierName.value.trim() : ''
         };
-
         try {
             saveDailyBtn.disabled = true;
             saveDailyBtn.classList.add('opacity-75', 'cursor-not-allowed');
@@ -1684,6 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cashRevenueEl.value = '';
                     actualCashEl.value = '';
                     drawerStatusEl.classList.add('hidden');
+                    if (dashCashierName) dashCashierName.value = '';
 
                     saveDailyBtn.classList.replace('bg-green-600', 'bg-blue-600');
                     saveDailyBtn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
