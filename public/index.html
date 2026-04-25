@@ -22,6 +22,14 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Στιγμιαίος έλεγχος σύνδεσης για να μην "αναβοσβήνει" η οθόνη Login κατά την ανανέωση
+        if (localStorage.getItem('token')) {
+            document.write('<style>#loginContainer { display: none !important; } #appContainer { display: block !important; }</style>');
+        } else {
+            document.write('<style>#appContainer { display: none !important; }</style>');
+        }
+    </script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
     
@@ -540,6 +548,6 @@
         </form>
     </div>
 
-    <script type="module" src="app.js?v=7"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

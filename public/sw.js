@@ -1,4 +1,4 @@
-const CACHE_NAME = 'merokamataki-v7';
+const CACHE_NAME = 'merokamataki-v8';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -36,16 +36,29 @@ self.addEventListener('activate', event => {
 
 // Fetch Event - Network First στρατηγική (για να έχουμε πάντα την τελευταία έκδοση)
 self.addEventListener('fetch', event => {
-  // Εξαιρούμε τα API requests για να παίρνουμε πάντα αληθινά δεδομένα από τη βάση
-  if (event.request.url.includes('/api/')) {
+  // Εξαιρούμε τα API requests και τυχόν extensions του browser (π.χ. chrome-extension://)
+  if (event.request.url.includes('/api/') || !event.request.url.startsWith('http')) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .catch(() => {
-        // Αν αποτύχει το δίκτυο (π.χ. εκτός σύνδεσης), επιστρέφουμε το αρχείο από την cache
-        return caches.match(event.request);
-      })
+    (async () => {
+      try {
+        // Προσπαθούμε πρώτα να φέρουμε το αρχείο από το ίντερνετ (ή τον localhost)
+        return await fetch(event.request);
+      } catch (error) {
+        // Αν αποτύχει (π.χ. κομμένο ίντερνετ ή κλειστός server), ψάχνουμε στην cache
+        const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Αν δεν υπάρχει ούτε στην cache, επιστρέφουμε μια έγκυρη κενή απάντηση για να μην "κρασάρει"
+        return new Response("Πρόβλημα δικτύου και το αρχείο δεν υπάρχει στην cache.", { 
+          status: 503, 
+          statusText: "Service Unavailable",
+          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })
+        });
+      }
+    })()
   );
 });
