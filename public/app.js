@@ -991,6 +991,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 closeEditModal();
                 fetchMonthlyReport(); // Ανανεώνουμε τον πίνακα και τα σύνολα της αναφοράς!
+                await fetchDashboardData(); // Παίρνουμε τα νέα δεδομένα
+                renderCalendar(); // Ενημερώνουμε τα κουτάκια του ημερολογίου
+                updateCalculations(); // Ενημερώνουμε τα νούμερα
             } else {
                 alert('Προέκυψε σφάλμα κατά την ενημέρωση.');
             }
@@ -1006,6 +1009,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiDeleteDailyRecord(id);
             if (response.ok) {
                 fetchMonthlyReport(); // Ανανεώνουμε αμέσως τη λίστα
+                await fetchDashboardData();
+                renderCalendar();
+                updateCalculations();
             } else {
                 alert('Προέκυψε σφάλμα κατά τη διαγραφή.');
             }
@@ -1175,7 +1181,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveModalDayBtn.classList.replace('bg-primary', 'bg-green-600');
                 saveModalDayBtn.textContent = 'Επιτυχία!';
                 
-                fetchDashboardData(); 
+                await fetchDashboardData(); 
+                renderCalendar();
+                updateCalculations();
                 
                 setTimeout(() => {
                     saveModalDayBtn.classList.replace('bg-green-600', 'bg-primary');
@@ -1688,7 +1696,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveDailyBtn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
                 saveDailyBtn.textContent = 'Επιτυχία!';
                 
-                fetchDashboardData(); // Ανανέωση δεδομένων & γραφήματος
+                await fetchDashboardData(); // Ανανέωση δεδομένων & γραφήματος
+                renderCalendar();
+                updateCalculations();
 
                 setTimeout(() => {
                     // Καθαρισμός φόρμας μετά την επιτυχία
