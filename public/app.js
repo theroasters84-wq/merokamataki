@@ -252,67 +252,120 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 monthlyRecordsList.innerHTML = '';
                 if (records.length === 0) {
-                monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 italic">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</td></tr>';
+                    monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 italic">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</td></tr>';
                 } else {
+                    const recordsByDate = {};
                     [...records].reverse().forEach(record => {
-                        const dateObj = new Date(record.date);
-                        const dateStr = dateObj.toLocaleDateString('el-GR');
-                        const fcColor = record.food_cost_percentage > 40 ? 'text-red-500' : (record.food_cost_percentage <= 30 ? 'text-green-500' : 'text-orange-500');
-                    
-                    // Υπολογισμός Εξόδων (Ανάλυση)
-                    let agatho = 0, ylika = 0, logariasmos = 0;
-                    let expensesData = [];
-                    try { expensesData = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []); } catch(e) {}
-                    expensesData.forEach(exp => {
-                        if (exp.category === 'agatho' || exp.category === 'materials') agatho += parseFloat(exp.amount) || 0;
-                        else if (exp.category === 'ylika') ylika += parseFloat(exp.amount) || 0;
-                        else logariasmos += parseFloat(exp.amount) || 0;
-                    });
-                    let expBreakdown = expensesData.length > 0 
-                        ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Ανάλυση Εξόδων:\\n\\n🍎 Αγαθά: ${formatCurrency(agatho)}\\n📦 Υλικά: ${formatCurrency(ylika)}\\n📄 Λογαριασμοί: ${formatCurrency(logariasmos)}')">Αγ: ${formatCurrency(agatho)} | Υλ: ${formatCurrency(ylika)} | Λογ: ${formatCurrency(logariasmos)}</span>`
-                        : '';
-
-                    // Υπολογισμός Μεροκάματων (Ανάλυση)
-                    let dailyWages = 0;
-                    let workedNames = [];
-                    let workedData = [];
-                    try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
-                    workedData.forEach(emp => {
-                        if (typeof emp === 'string') {
-                            dailyWages += (wageMap[emp] || 0);
-                            workedNames.push(emp);
-                        } else {
-                            dailyWages += (parseFloat(emp.total_cost) || 0);
-                            workedNames.push(emp.staff_id);
+                        const dateStr = record.date;
+                        if (!recordsByDate[dateStr]) {
+                            recordsByDate[dateStr] = {
+                                dateStr: dateStr,
+                                records: [],
+                                totalRev: 0,
+                                totalPos: 0,
+                                totalCash: 0,
+                                totalExp: 0,
+                                totalAgatho: 0,
+                                totalYlika: 0,
+                                totalLogariasmos: 0,
+                                totalWages: 0,
+                                workedNames: new Set()
+                            };
                         }
+                        const group = recordsByDate[dateStr];
+                        group.records.push(record);
+                        
+                        group.totalRev += parseFloat(record.daily_revenue) || 0;
+                        group.totalPos += parseFloat(record.pos_revenue) || 0;
+                        group.totalCash += parseFloat(record.cash_revenue) || 0;
+                        group.totalExp += parseFloat(record.total_expenses) || 0;
+                        
+                        let expensesData = [];
+                        try { expensesData = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []); } catch(e) {}
+                        expensesData.forEach(exp => {
+                            if (exp.category === 'agatho' || exp.category === 'materials') group.totalAgatho += parseFloat(exp.amount) || 0;
+                            else if (exp.category === 'ylika') group.totalYlika += parseFloat(exp.amount) || 0;
+                            else group.totalLogariasmos += parseFloat(exp.amount) || 0;
+                        });
+
+                        let workedData = [];
+                        try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
+                        workedData.forEach(emp => {
+                            if (typeof emp === 'string') {
+                                group.totalWages += (wageMap[emp] || 0);
+                                group.workedNames.add(emp);
+                            } else {
+                                group.totalWages += (parseFloat(emp.total_cost) || 0);
+                                group.workedNames.add(emp.staff_id);
+                            }
+                        });
                     });
-                    let wagesBreakdown = workedNames.length > 0 
-                        ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedNames.join('\\n👤 ')}')">${workedNames.length > 2 ? workedNames.slice(0,2).join(', ') + '...' : workedNames.join(', ')}</span>`
-                        : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
+
+                    const sortedDates = Object.keys(recordsByDate).sort((a, b) => new Date(b) - new Date(a));
+                    
+                    sortedDates.forEach(dateStr => {
+                        const group = recordsByDate[dateStr];
+                        const dateObj = new Date(group.dateStr);
+                        const dateFormatted = dateObj.toLocaleDateString('el-GR');
+                        
+                        const fcPercentage = group.totalRev > 0 ? (group.totalAgatho / group.totalRev) * 100 : 0;
+                        const fcColor = fcPercentage > 40 ? 'text-red-500' : (fcPercentage <= 30 ? 'text-green-500' : 'text-orange-500');
+
+                        let expBreakdown = (group.totalAgatho > 0 || group.totalYlika > 0 || group.totalLogariasmos > 0)
+                            ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Εξόδων:\\n\\n🍎 Αγαθά: ${formatCurrency(group.totalAgatho)}\\n📦 Υλικά: ${formatCurrency(group.totalYlika)}\\n📄 Λογαριασμοί: ${formatCurrency(group.totalLogariasmos)}')">Αγ: ${formatCurrency(group.totalAgatho)} | Υλ: ${formatCurrency(group.totalYlika)} | Λογ: ${formatCurrency(group.totalLogariasmos)}</span>`
+                            : '';
+
+                        const workedArray = Array.from(group.workedNames);
+                        let wagesBreakdown = workedArray.length > 0 
+                            ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedArray.join('\\n👤 ')}')">${workedArray.length > 2 ? workedArray.slice(0,2).join(', ') + '...' : workedArray.join(', ')}</span>`
+                            : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
+
+                        let shiftDetailsAlert = `Αναλυτικά Ταμεία (${dateFormatted}):\\n\\n`;
+                        group.records.forEach((rec, idx) => {
+                            const cashier = (rec.cashier_name || 'Άγνωστος').replace(/'/g, " ");
+                            shiftDetailsAlert += `Βάρδια ${idx + 1} (${cashier})\\n`;
+                            shiftDetailsAlert += `Τζίρος: ${formatCurrency(parseFloat(rec.daily_revenue) || 0)} (POS: ${formatCurrency(parseFloat(rec.pos_revenue) || 0)} | Μετρ: ${formatCurrency(parseFloat(rec.cash_revenue) || 0)})\\n`;
+                            shiftDetailsAlert += `Έξοδα: ${formatCurrency(parseFloat(rec.total_expenses) || 0)}\\n`;
+                            shiftDetailsAlert += `----------------------\\n`;
+                        });
+
+                        let actionsHtml = `<div class="flex flex-col gap-1">`;
+                        group.records.forEach((rec, idx) => {
+                            const cashierShort = (rec.cashier_name || 'Βάρδια '+(idx+1)).substring(0,8);
+                            actionsHtml += `
+                                <div class="flex items-center justify-between gap-1 bg-white px-2 py-1 rounded border border-gray-200">
+                                    <span class="text-[10px] text-gray-500 font-medium truncate max-w-[45px]" title="${rec.cashier_name || 'Βάρδια '+(idx+1)}">${cashierShort}</span>
+                                    <div class="flex items-center gap-1 flex-shrink-0">
+                                        <button onclick="editRecord(${rec.id}, '${rec.date}')" class="text-blue-500 hover:text-blue-700 transition-colors" title="Επεξεργασία">✏️</button>
+                                        <button onclick="deleteRecord(${rec.id})" class="text-red-500 hover:text-red-700 transition-colors" title="Διαγραφή">❌</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        actionsHtml += `</div>`;
 
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-gray-50';
                         tr.innerHTML = `
-                            <td class="px-6 py-3 text-sm text-gray-800">
-                                ${dateStr}
-                                ${record.cashier_name ? '<br><span class="text-xs text-gray-500">Ταμίας: ' + record.cashier_name + '</span>' : ''}
+                            <td class="px-6 py-3 text-sm text-gray-800 align-top">
+                                <span class="text-blue-600 hover:text-blue-800 cursor-pointer font-bold underline decoration-blue-300 decoration-2 underline-offset-2" onclick="alert('${shiftDetailsAlert}')">${dateFormatted}</span>
+                                ${group.records.length > 1 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded mt-2 inline-block shadow-sm">${group.records.length} Ταμεία</span>` : ''}
                             </td>
-                            <td class="px-6 py-3 text-sm text-gray-800">
-                                <span class="font-medium">${formatCurrency(parseFloat(record.daily_revenue))}</span>
-                                <br><span class="text-xs text-gray-500">POS: ${formatCurrency(parseFloat(record.pos_revenue || 0))} | Μετρ: ${formatCurrency(parseFloat(record.cash_revenue || 0))}</span>
+                            <td class="px-6 py-3 text-sm text-gray-800 align-top">
+                                <span class="font-medium">${formatCurrency(group.totalRev)}</span>
+                                <br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Τζίρου:\\n\\n💳 POS: ${formatCurrency(group.totalPos)}\\n💵 Μετρητά: ${formatCurrency(group.totalCash)}')">POS: ${formatCurrency(group.totalPos)} | Μετρ: ${formatCurrency(group.totalCash)}</span>
                             </td>
-                        <td class="px-6 py-3 text-sm text-gray-800">
-                            <span class="font-medium">${formatCurrency(parseFloat(record.total_expenses))}</span>
-                            ${expBreakdown}
-                        </td>
-                        <td class="px-6 py-3 text-sm text-gray-800">
-                            <span class="font-medium">${formatCurrency(dailyWages)}</span>
-                            ${wagesBreakdown}
-                        </td>
-                            <td class="px-6 py-3 text-sm font-semibold ${fcColor}">${parseFloat(record.food_cost_percentage).toFixed(1)}%</td>
-                            <td class="px-6 py-3 text-sm text-center">
-                                <button onclick="editRecord(${record.id}, '${record.date}')" class="text-blue-500 hover:text-blue-700 mx-1 transition-colors" title="Επεξεργασία">✏️</button>
-                                <button onclick="deleteRecord(${record.id})" class="text-red-500 hover:text-red-700 mx-1 transition-colors" title="Διαγραφή">❌</button>
+                            <td class="px-6 py-3 text-sm text-gray-800 align-top">
+                                <span class="font-medium">${formatCurrency(group.totalExp)}</span>
+                                ${expBreakdown}
+                            </td>
+                            <td class="px-6 py-3 text-sm text-gray-800 align-top">
+                                <span class="font-medium">${formatCurrency(group.totalWages)}</span>
+                                ${wagesBreakdown}
+                            </td>
+                            <td class="px-6 py-3 text-sm font-semibold align-top ${fcColor}">${fcPercentage.toFixed(1)}%</td>
+                            <td class="px-4 py-2 text-sm text-center align-top">
+                                ${actionsHtml}
                             </td>
                         `;
                         monthlyRecordsList.appendChild(tr);
@@ -548,6 +601,19 @@ document.addEventListener('DOMContentLoaded', () => {
             try { savedEmployees = typeof savedRecord.worked_employees === 'string' ? JSON.parse(savedRecord.worked_employees) : (savedRecord.worked_employees || []); } catch(e){}
         }
         
+        // Εύρεση όλων των ταμείων (βαρδιών) για αυτή τη μέρα
+        const savedRecordsForDay = appState.currentMonthlyRecords.filter(r => r.date && r.date.startsWith(targetDateStr));
+        
+        let alreadyWorkedEmpNames = [];
+        savedRecordsForDay.forEach(record => {
+            let worked = [];
+            try { worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e){}
+            worked.forEach(emp => {
+                const empName = typeof emp === 'string' ? emp : emp.staff_id;
+                alreadyWorkedEmpNames.push(empName);
+            });
+        });
+        
         const updateModalStaffTotal = () => {
             let currentTotal = 0;
             modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
@@ -570,12 +636,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const name = row.querySelector('.name-input').value.trim() || 'Άγνωστος';
                 const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
                 
+                const hasAlreadyWorked = alreadyWorkedEmpNames.includes(name);
+
                 const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
-                const hours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+                let hours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+                
+                if (hasAlreadyWorked) {
+                    hours = 0; // Μηδενισμός ωρών για αποφυγή διπλής χρέωσης στη νέα βάρδια
+                }
+
                 const defaultShift = dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning';
 
                 const wage = rate * hours;
                 workingEmployeesCount++;
+
+                let alreadyBadge = hasAlreadyWorked ? '<span class="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded ml-2" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>' : '';
 
                 const li = document.createElement('li');
                 li.className = 'flex flex-col gap-2 py-2 border-b border-gray-100 last:border-0';
@@ -584,6 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.innerHTML = `
                     <div class="flex justify-between items-center">
                         <span class="font-medium text-gray-800">${name} <span class="text-xs font-normal text-gray-500">(${formatCurrency(rate)}/ώ)</span></span>
+                        <span class="font-medium text-gray-800">${name} <span class="text-xs font-normal text-gray-500">(${formatCurrency(rate)}/ώ)</span>${alreadyBadge}</span>
                         <span class="font-bold emp-total-cost text-gray-900">${formatCurrency(wage)}</span>
                     </div>
                     <div class="flex gap-2 items-center">
