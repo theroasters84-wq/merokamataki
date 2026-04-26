@@ -1,92 +1,13 @@
 import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord, apiGetFixedCosts, apiSetFixedCosts } from './api.js';
 import { initAuth } from './auth.js';
+import { appState } from './state.js';
+import { initEmployees, fetchEmployees } from './employees.js';
+import { formatCurrency, formatTimeSlots } from './utils.js';
+import {
+  installAppBtn, logoutBtn, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, monthlyFixedCostsEl, weeklyFixedDisplayEl, editFixedCostsBtn, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas
+} from './dom.js';
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Auth DOM Στοιχεία ---
-    const installAppBtn = document.getElementById('installAppBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    // --- Επιλογή Στοιχείων DOM ---
-    const recordDateEl = document.getElementById('recordDate');
-    const posRevenueEl = document.getElementById('posRevenue');
-    const cashRevenueEl = document.getElementById('cashRevenue');
-    const actualCashEl = document.getElementById('actualCash');
-    const drawerStatusEl = document.getElementById('drawerStatus');
-    const foodCostDisplayEl = document.getElementById('foodCostDisplay');
-    const saveDailyBtn = document.getElementById('saveDailyBtn');
-    const dashCashierName = document.getElementById('dashCashierName');
-
-    // Νέα DOM στοιχεία εξόδων για το Κεντρικό Dashboard
-    const dashExpenseDesc = document.getElementById('dashExpenseDesc');
-    const dashExpenseCategory = document.getElementById('dashExpenseCategory');
-    const dashExpenseAmount = document.getElementById('dashExpenseAmount');
-    const dashExpensePaidFromDrawer = document.getElementById('dashExpensePaidFromDrawer');
-    const addDashExpenseBtn = document.getElementById('addDashExpenseBtn');
-    const dashExpensesList = document.getElementById('dashExpensesList');
-    const dashTotalExpensesDisplay = document.getElementById('dashTotalExpensesDisplay');
-
-    const monthlyFixedCostsEl = document.getElementById('monthlyFixedCosts');
-    const weeklyFixedDisplayEl = document.getElementById('weeklyFixedDisplay');
-    const editFixedCostsBtn = document.getElementById('editFixedCostsBtn');
-
-    const employeeListEl = document.getElementById('employeeList');
-    const addEmployeeBtn = document.getElementById('addEmployeeBtn');
-
-    const totalWeeklyCostEl = document.getElementById('totalWeeklyCost');
-    const breakEvenPointEl = document.getElementById('breakEvenPoint');
-
-    const dailyOperatingCostEl = document.getElementById('dailyOperatingCost');
-    const dailyBreakEvenPointEl = document.getElementById('dailyBreakEvenPoint');
-    const dailyNetProfitEl = document.getElementById('dailyNetProfit');
-
-    // --- Ημερολόγιο & Modal DOM ---
-    const calendarGrid = document.getElementById('calendarGrid');
-    const currentMonthDisplay = document.getElementById('currentMonthDisplay');
-    const prevMonthBtn = document.getElementById('prevMonthBtn');
-    const nextMonthBtn = document.getElementById('nextMonthBtn');
-    
-    const dayActionModal = document.getElementById('dayActionModal');
-    const actionExpensesBtn = document.getElementById('actionExpensesBtn');
-    const actionClosureBtn = document.getElementById('actionClosureBtn');
-    const closeDayActionModalBtn = document.getElementById('closeDayActionModalBtn');
-
-    const dayModal = document.getElementById('dayModal');
-    const modalDateDisplay = document.getElementById('modalDateDisplay');
-    const closeModalBtn = document.getElementById('closeModalBtn');
-
-    // --- Tabs & Monthly Report DOM ---
-    const tabDashboard = document.getElementById('tabDashboard');
-    const tabMonthlyReport = document.getElementById('tabMonthlyReport');
-    const dashboardView = document.getElementById('dashboardView');
-    const monthlyReportView = document.getElementById('monthlyReportView');
-
-    const reportMonthDisplay = document.getElementById('reportMonthDisplay');
-    const reportTotalRevenue = document.getElementById('reportTotalRevenue');
-    const reportTotalExpenses = document.getElementById('reportTotalExpenses');
-    const reportAverageFoodCost = document.getElementById('reportAverageFoodCost');
-    const reportFixedCosts = document.getElementById('reportFixedCosts');
-    const reportNetProfit = document.getElementById('reportNetProfit');
-    const fetchReportBtn = document.getElementById('fetchReportBtn');
-    const closeMonthBtn = document.getElementById('closeMonthBtn');
-
-    const monthlyRecordsList = document.getElementById('monthlyRecordsList');
-    const clearDataCheckbox = document.getElementById('clearDataCheckbox');
-
-    const editRecordModal = document.getElementById('editRecordModal');
-    const editModalDateDisplay = document.getElementById('editModalDateDisplay');
-    const editModalPosRevenue = document.getElementById('editModalPosRevenue');
-    const editModalCashRevenue = document.getElementById('editModalCashRevenue');
-    const editModalExpenses = document.getElementById('editModalExpenses');
-    const editModalEmployeesList = document.getElementById('editModalEmployeesList');
-    const closeEditModalBtn = document.getElementById('closeEditModalBtn');
-    const closeEditModalIconBtn = document.getElementById('closeEditModalIconBtn');
-    const saveEditModalBtn = document.getElementById('saveEditModalBtn');
-    const editModalCashierName = document.getElementById('editModalCashierName');
-
-    let currentReportData = null;
-    let currentMonthlyRecords = [];
-    let currentEditRecordId = null;
-    let currentEditRecordDate = null;
-    let foodCostChart = null;
 
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
@@ -145,89 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Διαχείριση Ανάκτησης & Αποθήκευσης Προσωπικού (Μόνιμη Βάση) ---
-    const fetchEmployees = async () => {
-        try {
-            const response = await apiFetchEmployees();
-            if (response.ok) {
-                const data = await response.json();
-                employeeListEl.innerHTML = '';
-                data.forEach(emp => {
-                    const row = createEmployeeRow();
-                    employeeListEl.appendChild(row);
-
-                    row.querySelector('.name-input').value = emp.name;
-                    row.querySelector('.display-name').textContent = emp.name;
-                    row.querySelector('.rate-input').value = emp.hourly_rate || 0;
-
-                    const schedule = typeof emp.schedule === 'string' ? JSON.parse(emp.schedule) : (emp.schedule || {});
-
-                    Object.keys(schedule).forEach(dayId => {
-                        const dayData = schedule[dayId];
-                        const wrapper = row.querySelector(`.day-wrapper[data-day="${dayId}"]`);
-                        if (wrapper) {
-                            wrapper.querySelector('.day-checkbox').checked = true;
-                            wrapper.querySelector('.shift-input-day').value = dayData.shift || 'morning';
-                            wrapper.querySelector('.hours-input-day').value = dayData.hours !== undefined ? dayData.hours : 8;
-
-                            const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
-                            if (panel && dayData.time_slots) {
-                                dayData.time_slots.forEach(hour => {
-                                    const btn = panel.querySelector(`.time-slot-btn-day[data-hour="${hour}"]`);
-                                    if (btn) {
-                                        btn.classList.remove('bg-white', 'text-gray-600');
-                                        btn.classList.add('bg-primary', 'text-white', 'border-primary');
-                                    }
-                                });
-                            }
-                        }
-                    });
-
-                    row.querySelector('.edit-mode').classList.add('hidden');
-                    row.querySelector('.view-mode').classList.remove('hidden');
-                });
-                updateCalculations();
-                renderCalendar();
-            }
-        } catch (error) {
-            console.error('Failed to fetch employees:', error);
-        }
-    };
-
-    const saveEmployeesToServer = async () => {
-        const employees = [];
-        const employeeRows = employeeListEl.querySelectorAll('.employee-row');
-        employeeRows.forEach(row => {
-            const name = row.querySelector('.name-input').value.trim();
-            if (!name) return;
-            const hourly_rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-            const schedule = {};
-            row.querySelectorAll('.day-wrapper').forEach(wrapper => {
-                const dayId = wrapper.dataset.day;
-                const isActive = wrapper.querySelector('.day-checkbox').checked;
-                if (isActive) {
-                    const shift = wrapper.querySelector('.shift-input-day').value;
-                    const hours = parseFloat(wrapper.querySelector('.hours-input-day').value) || 0;
-                    const time_slots = [];
-                    const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
-                    if (panel) {
-                        panel.querySelectorAll('.time-slot-btn-day.bg-primary').forEach(btn => time_slots.push(parseInt(btn.dataset.hour)));
-                    }
-                    schedule[dayId] = { shift, hours, time_slots };
-                }
-            });
-            employees.push({ name, hourly_rate, schedule });
-        });
-        try {
-            await apiSaveEmployeesBulk(employees);
-        } catch (error) {
-            console.error('Failed to save employees:', error);
-        }
-    };
-
     // --- Κεντρικές Συναρτήσεις Δεδομένων & Γραφήματος ---
     const refreshChartData = (records) => {
-        if (!foodCostChart) return;
+        if (!appState.foodCostChart) return;
         
         let cumulativeRev = 0;
         let cumulativeAgatho = 0;
@@ -260,21 +101,21 @@ document.addEventListener('DOMContentLoaded', () => {
             data.push(rollingFC.toFixed(1));
         });
 
-        foodCostChart.data.labels = labels;
-        foodCostChart.data.datasets[0].data = data;
-        foodCostChart.update();
+        appState.foodCostChart.data.labels = labels;
+        appState.foodCostChart.data.datasets[0].data = data;
+        appState.foodCostChart.update();
     };
 
     const fetchDashboardData = async () => {
-        const month = currentDate.getMonth() + 1;
-        const year = currentDate.getFullYear();
+        const month = appState.currentDate.getMonth() + 1;
+        const year = appState.currentDate.getFullYear();
         try {
             const response = await apiFetchDailyRecords(month, year);
             if (response.status === 401 || response.status === 403) return logout();
 
             if (response.ok) {
                 const records = await response.json();
-                currentMonthlyRecords = records;
+                appState.currentMonthlyRecords = records;
                 refreshChartData(records);
             }
         } catch (error) {
@@ -308,8 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const fetchMonthlyReport = async () => {
-        const month = currentDate.getMonth() + 1; // 1-12
-        const year = currentDate.getFullYear();
+        const month = appState.currentDate.getMonth() + 1; // 1-12
+        const year = appState.currentDate.getFullYear();
         
         const monthNames = ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος', 'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'];
         reportMonthDisplay.textContent = `${monthNames[month - 1]} ${year}`;
@@ -320,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const recordsResponse = await apiFetchDailyRecords(month, year);
             if (recordsResponse.ok) {
                 records = await recordsResponse.json();
-                currentMonthlyRecords = records;
+                appState.currentMonthlyRecords = records;
             } else {
                 console.error('Failed to fetch daily records');
             }
@@ -328,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await apiFetchMonthlyReport(month, year);
             if (response.ok) {
                 const data = await response.json();
-                currentReportData = data;
+                appState.currentReportData = data;
                 
                 const totalRev = parseFloat(data.total_revenue) || 0;
                 const totalExp = parseFloat(data.total_expenses) || 0;
@@ -395,14 +236,60 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to fetch monthly report');
             }
             
+            // Βοηθητικός χάρτης μισθών για υπολογισμό παλιών εγγραφών
+            const wageMap = {};
+            employeeListEl.querySelectorAll('.employee-row').forEach(row => {
+                const name = row.querySelector('.name-input').value.trim();
+                const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+                let fallbackHours = 8;
+                const firstChecked = row.querySelector('.day-checkbox:checked');
+                if (firstChecked) {
+                    const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
+                    if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
+                }
+                if (name) wageMap[name] = rate * fallbackHours;
+            });
+
                 monthlyRecordsList.innerHTML = '';
                 if (records.length === 0) {
-                    monthlyRecordsList.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500 italic">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</td></tr>';
+                monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 italic">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</td></tr>';
                 } else {
                     [...records].reverse().forEach(record => {
                         const dateObj = new Date(record.date);
                         const dateStr = dateObj.toLocaleDateString('el-GR');
                         const fcColor = record.food_cost_percentage > 40 ? 'text-red-500' : (record.food_cost_percentage <= 30 ? 'text-green-500' : 'text-orange-500');
+                    
+                    // Υπολογισμός Εξόδων (Ανάλυση)
+                    let agatho = 0, ylika = 0, logariasmos = 0;
+                    let expensesData = [];
+                    try { expensesData = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []); } catch(e) {}
+                    expensesData.forEach(exp => {
+                        if (exp.category === 'agatho' || exp.category === 'materials') agatho += parseFloat(exp.amount) || 0;
+                        else if (exp.category === 'ylika') ylika += parseFloat(exp.amount) || 0;
+                        else logariasmos += parseFloat(exp.amount) || 0;
+                    });
+                    let expBreakdown = expensesData.length > 0 
+                        ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Ανάλυση Εξόδων:\\n\\n🍎 Αγαθά: ${formatCurrency(agatho)}\\n📦 Υλικά: ${formatCurrency(ylika)}\\n📄 Λογαριασμοί: ${formatCurrency(logariasmos)}')">Αγ: ${formatCurrency(agatho)} | Υλ: ${formatCurrency(ylika)} | Λογ: ${formatCurrency(logariasmos)}</span>`
+                        : '';
+
+                    // Υπολογισμός Μεροκάματων (Ανάλυση)
+                    let dailyWages = 0;
+                    let workedNames = [];
+                    let workedData = [];
+                    try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
+                    workedData.forEach(emp => {
+                        if (typeof emp === 'string') {
+                            dailyWages += (wageMap[emp] || 0);
+                            workedNames.push(emp);
+                        } else {
+                            dailyWages += (parseFloat(emp.total_cost) || 0);
+                            workedNames.push(emp.staff_id);
+                        }
+                    });
+                    let wagesBreakdown = workedNames.length > 0 
+                        ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedNames.join('\\n👤 ')}')">${workedNames.length > 2 ? workedNames.slice(0,2).join(', ') + '...' : workedNames.join(', ')}</span>`
+                        : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
+
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-gray-50';
                         tr.innerHTML = `
@@ -414,7 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="font-medium">${formatCurrency(parseFloat(record.daily_revenue))}</span>
                                 <br><span class="text-xs text-gray-500">POS: ${formatCurrency(parseFloat(record.pos_revenue || 0))} | Μετρ: ${formatCurrency(parseFloat(record.cash_revenue || 0))}</span>
                             </td>
-                            <td class="px-6 py-3 text-sm text-gray-800">${formatCurrency(parseFloat(record.total_expenses))}</td>
+                        <td class="px-6 py-3 text-sm text-gray-800">
+                            <span class="font-medium">${formatCurrency(parseFloat(record.total_expenses))}</span>
+                            ${expBreakdown}
+                        </td>
+                        <td class="px-6 py-3 text-sm text-gray-800">
+                            <span class="font-medium">${formatCurrency(dailyWages)}</span>
+                            ${wagesBreakdown}
+                        </td>
                             <td class="px-6 py-3 text-sm font-semibold ${fcColor}">${parseFloat(record.food_cost_percentage).toFixed(1)}%</td>
                             <td class="px-6 py-3 text-sm text-center">
                                 <button onclick="editRecord(${record.id}, '${record.date}')" class="text-blue-500 hover:text-blue-700 mx-1 transition-colors" title="Επεξεργασία">✏️</button>
@@ -433,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchReportBtn.addEventListener('click', fetchMonthlyReport);
 
     closeMonthBtn.addEventListener('click', async () => {
-        if (!currentReportData) return alert('Παρακαλώ ανανεώστε τα δεδομένα πρώτα.');
+        if (!appState.currentReportData) return alert('Παρακαλώ ανανεώστε τα δεδομένα πρώτα.');
         
         const clearData = clearDataCheckbox ? clearDataCheckbox.checked : false;
         const confirmMessage = clearData 
@@ -442,12 +336,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!confirm(confirmMessage)) return;
 
-        const month = currentDate.getMonth() + 1;
-        const year = currentDate.getFullYear();
+        const month = appState.currentDate.getMonth() + 1;
+        const year = appState.currentDate.getFullYear();
 
         const fixedCosts = parseFloat(monthlyFixedCostsEl.value) || 0;
-        const totalRev = parseFloat(currentReportData.total_revenue) || 0;
-        const totalExp = parseFloat(currentReportData.total_expenses) || 0;
+        const totalRev = parseFloat(appState.currentReportData.total_revenue) || 0;
+        const totalExp = parseFloat(appState.currentReportData.total_expenses) || 0;
         
         const wageMap = {};
         employeeListEl.querySelectorAll('.employee-row').forEach(row => {
@@ -463,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         let actualMonthlyPayroll = 0;
-        currentMonthlyRecords.forEach(record => {
+        appState.currentMonthlyRecords.forEach(record => {
             let worked = [];
             try {
                 worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || [];
@@ -503,59 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Αδυναμία αποθήκευσης συνόψεων.');
         }
     });
-
-    // Νέα DOM στοιχεία του Modal
-    const expenseDescInput = document.getElementById('expenseDescInput');
-    const expenseCategoryInput = document.getElementById('expenseCategoryInput');
-    const expenseAmountInput = document.getElementById('expenseAmountInput');
-    const modalExpensePaidFromDrawer = document.getElementById('modalExpensePaidFromDrawer');
-    const addExpenseBtn = document.getElementById('addExpenseBtn');
-    const modalExpensesList = document.getElementById('modalExpensesList');
-    const modalTotalExpensesDisplay = document.getElementById('modalTotalExpensesDisplay');
-    const posTotal = document.getElementById('posTotal');
-    const drawerCash = document.getElementById('drawerCash');
-    const zReceipt = document.getElementById('zReceipt');
-    const modalDrawerStatus = document.getElementById('modalDrawerStatus');
-    const saveModalDayBtn = document.getElementById('saveModalDayBtn');
-    const modalCashierName = document.getElementById('modalCashierName');
-
-    // --- Κατάσταση ---
-    let foodCostPercentage = 0;
-    let currentDate = new Date(); // Τρέχουσα ημερομηνία για το ημερολόγιο
-    let currentModalExpenses = []; // Προσωρινή λίστα εξόδων για το ανοιχτό Modal
-    let currentDashboardExpenses = []; // Προσωρινή λίστα εξόδων για το Κεντρικό Dashboard
-
-    // Helper για μορφοποίηση νομίσματος
-    const formatCurrency = (amount) => {
-        return amount.toLocaleString('el-GR', { style: 'currency', currency: 'EUR' });
-    };
-    
-    // Helper για μορφοποίηση των time slots (π.χ. [10,11,18,19] -> "10:00-12:00, 18:00-20:00")
-    const formatTimeSlots = (slots) => {
-        if (!slots || slots.length === 0) return '';
-        let ranges = [];
-        let sorted = [...slots].sort((a,b)=>a-b);
-        let start = sorted[0];
-        let prev = start;
-        const formatHour = (h) => `${String(h).padStart(2, '0')}:00`;
-        for (let i = 1; i < sorted.length; i++) {
-            if (sorted[i] === prev + 1) {
-                prev = sorted[i];
-            } else {
-                ranges.push(`${formatHour(start)}-${formatHour(prev + 1)}`);
-                start = sorted[i];
-                prev = start;
-            }
-        }
-        ranges.push(`${formatHour(start)}-${formatHour(prev + 1)}`);
-        return ranges.join(', ');
-    };
-
     // --- Λογική Ημερολογίου ---
     const renderCalendar = () => {
         calendarGrid.innerHTML = '';
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
+        const year = appState.currentDate.getFullYear();
+        const month = appState.currentDate.getMonth();
 
         // Εμφάνιση Μήνα / Έτους
         const monthNames = ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος', 'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'];
@@ -587,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Εύρεση εργαζομένων για αυτή τη μέρα ---
             const targetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const savedRecords = currentMonthlyRecords.filter(r => {
+            const savedRecords = appState.currentMonthlyRecords.filter(r => {
                 const d = new Date(r.date);
                 return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
             });
@@ -671,14 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     };
 
-    const modalShiftsList = document.getElementById('modalShiftsList');
-
     const openDayModal = (year, month, day, mode = 'closure') => {
         window.currentDayModalMode = mode;
         const targetDate = new Date(year, month, day);
-        
-        const modalShiftsSection = document.getElementById('modalShiftsSection');
-        const modalRevenueSection = document.getElementById('modalRevenueSection');
         
         if (mode === 'expenses') {
             if (modalShiftsSection) modalShiftsSection.classList.add('hidden');
@@ -701,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pad = (num) => String(num).padStart(2, '0');
         const targetDateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-        const savedRecord = currentMonthlyRecords.find(r => r.date && r.date.startsWith(targetDateStr));
+        const savedRecord = appState.currentMonthlyRecords.find(r => r.date && r.date.startsWith(targetDateStr));
         let savedEmployees = [];
         if (savedRecord) {
             try { savedEmployees = typeof savedRecord.worked_employees === 'string' ? JSON.parse(savedRecord.worked_employees) : (savedRecord.worked_employees || []); } catch(e){}
@@ -718,6 +559,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const totalSpan = modalShiftsList.querySelector('.modal-staff-total-val');
             if (totalSpan) totalSpan.textContent = formatCurrency(currentTotal);
+            
+            updateModalDrawerStatus();
         };
 
         const employeeRows = employeeListEl.querySelectorAll('.employee-row');
@@ -769,23 +612,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Φόρτωση εξόδων και ταμείου αν υπάρχει ήδη αποθηκευμένη μέρα
         if (savedRecord) {
             try { 
-                currentModalExpenses = typeof savedRecord.detailed_expenses === 'string' ? JSON.parse(savedRecord.detailed_expenses) : (savedRecord.detailed_expenses || []); 
+                appState.currentModalExpenses = typeof savedRecord.detailed_expenses === 'string' ? JSON.parse(savedRecord.detailed_expenses) : (savedRecord.detailed_expenses || []); 
             } catch(e) {
-                currentModalExpenses = [];
+                appState.currentModalExpenses = [];
             }
             posTotal.value = savedRecord.pos_revenue || '';
             drawerCash.value = savedRecord.cash_revenue || '';
             zReceipt.value = savedRecord.daily_revenue || '';
             if (modalCashierName) modalCashierName.value = savedRecord.cashier_name || '';
         } else {
-            currentModalExpenses = [];
+            appState.currentModalExpenses = [];
             posTotal.value = '';
             drawerCash.value = '';
             zReceipt.value = '';
             if (modalCashierName) modalCashierName.value = '';
         }
         // Πάντα κενό για νέα βάρδια (ή προσθήκη εξόδων)
-        currentModalExpenses = [];
+        appState.currentModalExpenses = [];
         posTotal.value = '';
         drawerCash.value = '';
         zReceipt.value = '';
@@ -804,13 +647,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateModalDrawerStatus = () => {
         let drawerExpenses = 0;
-        currentModalExpenses.forEach(exp => {
+        appState.currentModalExpenses.forEach(exp => {
             if (exp.paidFromDrawer !== false) drawerExpenses += exp.amount;
+        });
+        
+        let totalWages = 0;
+        modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
+            const cost = parseFloat(li.querySelector('.emp-total-cost').textContent.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+            totalWages += cost;
         });
         
         const pos = parseFloat(posTotal.value) || 0;
         const cash = parseFloat(drawerCash.value) || 0;
-        const actualTotalRevenue = pos + cash + drawerExpenses;
+        const actualTotalRevenue = pos + cash + drawerExpenses + totalWages;
         
         if (zReceipt.value !== '') {
             const z = parseFloat(zReceipt.value) || 0;
@@ -837,10 +686,10 @@ document.addEventListener('DOMContentLoaded', () => {
         modalExpensesList.innerHTML = '';
         let total = 0;
 
-        if (currentModalExpenses.length === 0) {
+        if (appState.currentModalExpenses.length === 0) {
             modalExpensesList.innerHTML = '<li class="italic text-gray-400">Κανένα έξοδο.</li>';
         } else {
-            currentModalExpenses.forEach((exp, index) => {
+            appState.currentModalExpenses.forEach((exp, index) => {
                 total += exp.amount;
                 
                 let badge = '';
@@ -872,17 +721,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Κάνουμε τη συνάρτηση διαθέσιμη στο window για το inline onclick
     window.removeModalExpense = (index) => {
-        currentModalExpenses.splice(index, 1);
+        appState.currentModalExpenses.splice(index, 1);
         updateModalExpensesUI();
     };
 
     // --- Συναρτήσεις Επεξεργασίας / Διαγραφής Αναλυτικών Ταμείων ---
     window.editRecord = (id, date) => {
-        const record = currentMonthlyRecords.find(r => r.id === id);
+        const record = appState.currentMonthlyRecords.find(r => r.id === id);
         if (!record) return;
 
-        currentEditRecordId = id;
-        currentEditRecordDate = date;
+        appState.currentEditRecordId = id;
+        appState.currentEditRecordDate = date;
 
         const dateObj = new Date(date);
         editModalDateDisplay.textContent = `(${dateObj.toLocaleDateString('el-GR')})`;
@@ -890,16 +739,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Φορτώνουμε πλέον τα πραγματικά πεδία από το backend
         editModalPosRevenue.value = record.pos_revenue !== undefined ? record.pos_revenue : record.daily_revenue;
         editModalCashRevenue.value = record.cash_revenue || '';
-        editModalExpenses.value = record.total_expenses;
         
-        // Υπολογισμός και εμφάνιση ΜΟΝΟ των Αγαθών (Πρώτων Υλών)
-        const fc = parseFloat(record.food_cost_percentage) || 0;
-        const rev = parseFloat(record.daily_revenue) || 0;
-        const originalMaterials = (fc * rev) / 100;
-        
-        editModalExpenses.value = originalMaterials.toFixed(2);
-        window.currentEditTotalExpenses = record.total_expenses;
-        window.currentEditOriginalMaterials = originalMaterials;
+        try {
+            appState.currentEditExpenses = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []);
+        } catch(e) {
+            appState.currentEditExpenses = [];
+        }
+        updateEditExpensesUI();
 
         if (editModalCashierName) editModalCashierName.value = record.cashier_name || '';
 
@@ -942,56 +788,133 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const closeEditModal = () => {
         editRecordModal.classList.add('hidden');
-        currentEditRecordId = null;
-        currentEditRecordDate = null;
+        appState.currentEditRecordId = null;
+        appState.currentEditRecordDate = null;
     };
 
     closeEditModalBtn.addEventListener('click', closeEditModal);
     closeEditModalIconBtn.addEventListener('click', closeEditModal);
 
+    // --- Λογική Εξόδων Quick Edit Modal ---
+    const updateEditExpensesUI = () => {
+        if (!editModalExpensesList) return;
+        editModalExpensesList.innerHTML = '';
+        let total = 0;
+
+        if (appState.currentEditExpenses.length === 0) {
+            editModalExpensesList.innerHTML = '<li class="italic text-gray-400">Κανένα έξοδο.</li>';
+        } else {
+            appState.currentEditExpenses.forEach((exp, index) => {
+                total += exp.amount;
+                
+                let badge = '';
+                if (exp.category === 'agatho') badge = '<span class="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded ml-2">Αγαθό</span>';
+                else if (exp.category === 'logariasmos') badge = '<span class="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded ml-2">Λογαριασμός</span>';
+                else badge = '<span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-2">Υλικά</span>';
+                
+                let paymentBadge = exp.paidFromDrawer === false ? '<span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded ml-2" title="Πληρώθηκε εκτός ταμείου">🏦 Εκτός Ταμείου</span>' : '';
+
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-50 px-2 py-1 rounded border border-gray-100';
+                li.innerHTML = `
+                    <div class="flex items-center truncate pr-2">
+                        <span class="truncate">${exp.desc}</span>
+                        ${badge}
+                        ${paymentBadge}
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="font-semibold">${formatCurrency(exp.amount)}</span>
+                        <button type="button" class="text-red-500 hover:text-red-700 font-bold" onclick="removeEditExpense(${index})">&times;</button>
+                    </div>
+                `;
+                editModalExpensesList.appendChild(li);
+            });
+        }
+        if (editModalTotalExpensesDisplay) editModalTotalExpensesDisplay.textContent = formatCurrency(total);
+    };
+
+    window.removeEditExpense = (index) => {
+        appState.currentEditExpenses.splice(index, 1);
+        updateEditExpensesUI();
+    };
+
+    if (addEditExpenseBtn) {
+        addEditExpenseBtn.addEventListener('click', () => {
+            const desc = editExpenseDescInput.value.trim();
+            const amountStr = editExpenseAmountInput.value.replace(',', '.');
+            const amount = parseFloat(amountStr);
+            const category = editExpenseCategoryInput.value;
+            const paidFromDrawer = editExpensePaidFromDrawer ? editExpensePaidFromDrawer.checked : true;
+
+            if (desc && amount > 0) {
+                appState.currentEditExpenses.push({ desc, category, amount, paidFromDrawer });
+                editExpenseDescInput.value = '';
+                editExpenseAmountInput.value = '';
+                if (editExpensePaidFromDrawer) editExpensePaidFromDrawer.checked = true;
+                updateEditExpensesUI();
+            } else {
+                alert('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).');
+            }
+        });
+    }
+
     saveEditModalBtn.addEventListener('click', async () => {
-        if (!currentEditRecordId) return;
+        if (!appState.currentEditRecordId) return;
 
         const posRev = parseFloat(editModalPosRevenue.value) || 0;
         const cashRev = parseFloat(editModalCashRevenue.value) || 0;
-        const newRevenue = posRev + cashRev;
-        const newMaterials = parseFloat(editModalExpenses.value) || 0;
 
-        if (isNaN(newRevenue) || isNaN(newMaterials) || newRevenue < 0 || newMaterials < 0) {
-            alert('Παρακαλώ εισάγετε έγκυρους αριθμούς.');
-            return;
-        }
-
-        let newFoodCost = 0;
-        if (newRevenue > 0) {
-            newFoodCost = (newMaterials / newRevenue) * 100;
-        }
+        let totalExpenses = 0;
+        let agathoExpenses = 0;
+        let drawerExpenses = 0;
         
-        // Διατήρηση και ενημέρωση των συνολικών εξόδων
-        const materialsDiff = newMaterials - (window.currentEditOriginalMaterials || 0);
-        const newTotalExpenses = (parseFloat(window.currentEditTotalExpenses) || 0) + materialsDiff;
+        appState.currentEditExpenses.forEach(exp => {
+            totalExpenses += exp.amount;
+            if (exp.category === 'agatho') agathoExpenses += exp.amount;
+            if (exp.paidFromDrawer !== false) drawerExpenses += exp.amount;
+        });
 
+        let totalWages = 0;
         // Συλλογή τικαρισμένων εργαζομένων
         const checkboxes = editModalEmployeesList.querySelectorAll('.edit-employee-checkbox:checked');
         const workedEmployees = Array.from(checkboxes).map(cb => {
             const name = cb.value;
             const existing = (window.currentEditRecordWorkedEmployees || []).find(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name);
             if (existing && typeof existing === 'object') {
+                totalWages += parseFloat(existing.total_cost) || 0;
                 return existing;
             } else {
+                let rate = 0;
+                const empRow = Array.from(employeeListEl.querySelectorAll('.employee-row')).find(row => row.querySelector('.name-input').value.trim() === name);
+                if (empRow) rate = parseFloat(empRow.querySelector('.rate-input').value) || 0;
+                const wage = rate * 8;
+                totalWages += wage;
                 return { staff_id: name, hours_worked: 8, shift_type: 'morning', total_cost: 0, time_slots: [] };
             }
         });
 
+        const newRevenue = posRev + cashRev + drawerExpenses + totalWages;
+
+        if (isNaN(newRevenue) || newRevenue < 0) {
+            alert('Παρακαλώ εισάγετε έγκυρους αριθμούς.');
+            return;
+        }
+
+        let newFoodCost = 0;
+        if (newRevenue > 0) {
+            newFoodCost = (agathoExpenses / newRevenue) * 100;
+        }
+
         try {
-            const response = await apiUpdateDailyRecord(currentEditRecordId, {
-                    date: currentEditRecordDate,
+            const response = await apiUpdateDailyRecord(appState.currentEditRecordId, {
+                    date: appState.currentEditRecordDate,
                     daily_revenue: newRevenue,
                     cash_revenue: cashRev,
                     pos_revenue: posRev,
-                    total_expenses: newTotalExpenses,
+                    total_expenses: totalExpenses,
                     food_cost_percentage: newFoodCost,
                     worked_employees: workedEmployees,
+                    detailed_expenses: appState.currentEditExpenses,
                     cashier_name: editModalCashierName ? editModalCashierName.value.trim() : ''
                 });
 
@@ -1035,7 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const paidFromDrawer = modalExpensePaidFromDrawer ? modalExpensePaidFromDrawer.checked : true;
 
         if (desc && amount > 0) {
-            currentModalExpenses.push({ desc, category, amount, paidFromDrawer });
+            appState.currentModalExpenses.push({ desc, category, amount, paidFromDrawer });
             expenseDescInput.value = '';
             expenseAmountInput.value = '';
             if (modalExpensePaidFromDrawer) modalExpensePaidFromDrawer.checked = true;
@@ -1050,10 +973,10 @@ document.addEventListener('DOMContentLoaded', () => {
         dashExpensesList.innerHTML = '';
         let total = 0;
 
-        if (currentDashboardExpenses.length === 0) {
+        if (appState.currentDashboardExpenses.length === 0) {
             dashExpensesList.innerHTML = '<li class="italic text-gray-400">Κανένα έξοδο.</li>';
         } else {
-            currentDashboardExpenses.forEach((exp, index) => {
+            appState.currentDashboardExpenses.forEach((exp, index) => {
                 total += exp.amount;
                 
                 let badge = '';
@@ -1084,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.removeDashExpense = (index) => {
-        currentDashboardExpenses.splice(index, 1);
+        appState.currentDashboardExpenses.splice(index, 1);
         updateDashExpensesUI();
     };
 
@@ -1096,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const paidFromDrawer = dashExpensePaidFromDrawer ? dashExpensePaidFromDrawer.checked : true;
 
         if (desc && amount > 0) {
-            currentDashboardExpenses.push({ desc, category, amount, paidFromDrawer });
+            appState.currentDashboardExpenses.push({ desc, category, amount, paidFromDrawer });
             dashExpenseDesc.value = '';
             dashExpenseAmount.value = '';
             if (dashExpensePaidFromDrawer) dashExpensePaidFromDrawer.checked = true;
@@ -1115,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let agathoExpenses = 0;
         let drawerExpenses = 0;
 
-        currentModalExpenses.forEach(exp => {
+        appState.currentModalExpenses.forEach(exp => {
             totalExpenses += exp.amount;
             if (exp.category === 'agatho') {
                 agathoExpenses += exp.amount;
@@ -1125,26 +1048,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        const actualTotalRevenue = pos + cash + drawerExpenses;
-        const officialRevenue = z > 0 ? z : actualTotalRevenue;
-        const actualCashRevenue = cash + drawerExpenses;
-        
-        // Επιτρέπουμε μηδενικό τζίρο μόνο αν ο χρήστης βρίσκεται στο "Προσθήκη Εξόδων"
-        if (window.currentDayModalMode !== 'expenses' && officialRevenue === 0) {
-            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
-            return;
-        }
-
-        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
-
         const dateStr = recordDateEl.value || new Date().toISOString().split('T')[0];
         const workedEmployees = [];
+        let totalWages = 0;
         
         modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
             const name = li.dataset.empName;
             const hours = parseFloat(li.querySelector('.modal-emp-hours').value) || 0;
             const shiftType = li.querySelector('.modal-emp-shift').value;
             const totalCost = parseFloat(li.querySelector('.emp-total-cost').textContent.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+            
+            totalWages += totalCost;
             
             const timeSlots = [];
             li.querySelectorAll('.time-slot-btn.bg-primary').forEach(btn => {
@@ -1162,6 +1076,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        const actualTotalRevenue = pos + cash + drawerExpenses + totalWages;
+        const officialRevenue = z > 0 ? z : actualTotalRevenue;
+        const actualCashRevenue = cash + drawerExpenses;
+
+        // Επιτρέπουμε μηδενικό τζίρο μόνο αν ο χρήστης βρίσκεται στο "Προσθήκη Εξόδων"
+        if (window.currentDayModalMode !== 'expenses' && officialRevenue === 0) {
+            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
+            return;
+        }
+
+        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
+
         const payload = {
             date: dateStr,
             daily_revenue: officialRevenue,
@@ -1170,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', () => {
             total_expenses: totalExpenses,
             food_cost_percentage: fcPercentage,
             worked_employees: workedEmployees,
-            detailed_expenses: currentModalExpenses,
+            detailed_expenses: appState.currentModalExpenses,
             cashier_name: modalCashierName ? modalCashierName.value.trim() : ''
         };
 
@@ -1211,13 +1137,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners Ημερολογίου
     prevMonthBtn.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
+        appState.currentDate.setMonth(appState.currentDate.getMonth() - 1);
         renderCalendar();
         fetchDashboardData();
     });
 
     nextMonthBtn.addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
+        appState.currentDate.setMonth(appState.currentDate.getMonth() + 1);
         renderCalendar();
         fetchDashboardData();
     });
@@ -1245,15 +1171,35 @@ document.addEventListener('DOMContentLoaded', () => {
         let materials = 0;
         let allDashExpenses = 0;
         let drawerExpenses = 0;
-        currentDashboardExpenses.forEach(exp => {
+        appState.currentDashboardExpenses.forEach(exp => {
             allDashExpenses += exp.amount;
             if (exp.category === 'agatho') materials += exp.amount;
             if (exp.paidFromDrawer !== false) drawerExpenses += exp.amount;
         });
 
+        // Υπολογισμός μεροκάματων σημερινής ημέρας
+        let totalWagesForToday = 0;
+        const dateStrForToday = recordDateEl.value || new Date().toISOString().split('T')[0];
+        const dayOfWeekForToday = new Date(dateStrForToday).getDay();
+        
+        employeeListEl.querySelectorAll('.employee-row').forEach(row => {
+            const checkbox = row.querySelector(`.day-checkbox[data-day="${dayOfWeekForToday}"]`);
+            if (checkbox && checkbox.checked) {
+                const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+                const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeekForToday}"]`);
+                const fallbackHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+                const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayOfWeekForToday}"]`);
+                let hours = fallbackHours;
+                if (panel) {
+                    const timeSlots = panel.querySelectorAll('.time-slot-btn-day.bg-primary');
+                    if (timeSlots.length > 0) hours = timeSlots.length;
+                }
+                totalWagesForToday += rate * hours;
+            }
+        });
+
         // ΝΕΟ: Ταμειακή Συμφωνία
-        // Ταμειακή Συμφωνία
-        const actualTotalRevenue = posRev + cashRev + drawerExpenses;
+        const actualTotalRevenue = posRev + cashRev + drawerExpenses + totalWagesForToday;
         const officialRevenue = zReceiptDash > 0 ? zReceiptDash : actualTotalRevenue;
 
         if (actualCashEl.value !== '') {
@@ -1276,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let cumulativeRev = 0;
         let cumulativeAgatho = 0;
         
-        currentMonthlyRecords.forEach(r => {
+        appState.currentMonthlyRecords.forEach(r => {
             const rev = parseFloat(r.daily_revenue) || 0;
             cumulativeRev += rev;
             
@@ -1301,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Βρίσκουμε τα σημερινά αποθηκευμένα έσοδα
         const dateStr = recordDateEl.value || new Date().toISOString().split('T')[0];
-        const existingRecords = currentMonthlyRecords.filter(r => r.date && r.date.startsWith(dateStr));
+        const existingRecords = appState.currentMonthlyRecords.filter(r => r.date && r.date.startsWith(dateStr));
         let todaysSavedRev = 0;
         existingRecords.forEach(r => {
             todaysSavedRev += (parseFloat(r.daily_revenue) || 0);
@@ -1309,20 +1255,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalTodayRevenue = todaysSavedRev + officialRevenue;
 
         if (cumulativeRev > 0) {
-            foodCostPercentage = (cumulativeAgatho / cumulativeRev) * 100;
+            appState.foodCostPercentage = (cumulativeAgatho / cumulativeRev) * 100;
             
-            foodCostDisplayEl.textContent = foodCostPercentage.toFixed(1) + '%';
+            foodCostDisplayEl.textContent = appState.foodCostPercentage.toFixed(1) + '%';
             foodCostDisplayEl.className = 'text-2xl font-bold'; // Επαναφορά κλάσεων
 
-            if (foodCostPercentage <= 30) {
+            if (appState.foodCostPercentage <= 30) {
                 foodCostDisplayEl.classList.add('text-green-500');
-            } else if (foodCostPercentage <= 40) {
+            } else if (appState.foodCostPercentage <= 40) {
                 foodCostDisplayEl.classList.add('text-orange-500');
             } else {
                 foodCostDisplayEl.classList.add('text-red-500');
             }
         } else {
-            foodCostPercentage = 0;
+            appState.foodCostPercentage = 0;
             foodCostDisplayEl.textContent = '-%';
             foodCostDisplayEl.className = 'text-2xl font-bold text-gray-400';
         }
@@ -1436,167 +1382,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('input', updateModalDrawerStatus);
     });
 
-    // --- Διαχείριση Προσωπικού (Δυναμική Λίστα) ---
-    const createEmployeeRow = () => {
-        const div = document.createElement('div');
-        div.className = 'flex flex-col gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg employee-row transition-all';
-        
-        const daysArr = [
-            { id: 1, label: 'Δε', title: 'Δευτέρα' },
-            { id: 2, label: 'Τρ', title: 'Τρίτη' },
-            { id: 3, label: 'Τε', title: 'Τετάρτη' },
-            { id: 4, label: 'Πε', title: 'Πέμπτη' },
-            { id: 5, label: 'Πα', title: 'Παρασκευή' },
-            { id: 6, label: 'Σα', title: 'Σάββατο' },
-            { id: 0, label: 'Κυ', title: 'Κυριακή' }
-        ];
-
-        let daysHtml = '<div class="flex justify-start sm:justify-between items-end w-full text-xs font-medium text-gray-600 mt-2 px-1 overflow-x-auto pb-2 gap-4 sm:gap-1">';
-        let allSlotsPanels = '';
-
-        daysArr.forEach(d => {
-            let sHtml = `<div class="time-slots-panel-day hidden grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-1 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">`;
-            for (let i = 0; i < 24; i++) {
-                sHtml += `<button type="button" data-hour="${i}" class="time-slot-btn-day text-xs py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50">${String(i).padStart(2,'0')}:00</button>`;
-            }
-            sHtml += '</div>';
-            allSlotsPanels += sHtml;
-
-            daysHtml += `
-                <div class="flex flex-col items-center gap-1 day-wrapper flex-shrink-0" data-day="${d.id}">
-                    <div class="flex justify-center items-center gap-1 w-full">
-                        <select class="shift-input-day text-[12px] p-0.5 border border-gray-300 rounded bg-white outline-none focus:ring-primary text-center cursor-pointer w-7 h-6" title="Βάρδια">
-                            <option value="morning">☀️</option>
-                            <option value="night">🌙</option>
-                            <option value="split">⚡</option>
-                        </select>
-                        <button type="button" class="toggle-slots-btn-day text-[10px] text-gray-500 hover:text-primary bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 transition-colors h-6" title="24ωρο Ωράριο">🕒</button>
-                    </div>
-                    <input type="number" class="hours-input-day w-10 text-[10px] p-0.5 border border-gray-300 rounded text-center outline-none focus:ring-primary" min="0" step="0.5" value="8" title="Ώρες εργασίας ημέρας">
-                    <label class="flex flex-col items-center gap-0.5 cursor-pointer hover:text-primary">
-                        <span title="${d.title}">${d.label}</span>
-                        <input type="checkbox" class="day-checkbox w-3.5 h-3.5 text-primary rounded border-gray-300 focus:ring-primary" data-day="${d.id}">
-                    </label>
-                </div>
-            `;
-        });
-        daysHtml += '</div>';
-
-        div.innerHTML = `
-            <!-- ΠΡΟΒΟΛΗ (Όταν αποθηκευτεί) -->
-            <div class="view-mode hidden flex justify-between items-center w-full cursor-pointer hover:bg-gray-200 p-2 rounded transition-colors border border-transparent hover:border-gray-300">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">👤</span>
-                    <span class="font-bold text-gray-800 display-name text-lg"></span>
-                </div>
-                <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border border-gray-200">✏️ Επεξεργασία</span>
-            </div>
-            <!-- ΕΠΕΞΕΡΓΑΣΙΑ -->
-            <div class="edit-mode flex flex-col gap-2 w-full">
-                <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center w-full">
-                    <input type="text" placeholder="Όνομα" class="flex-grow px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none name-input">
-                    <input type="number" placeholder="Ωρομίσθιο (€)" class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none rate-input" min="0" step="0.01">
-                    <button type="button" class="save-emp-btn text-sm bg-green-100 hover:bg-green-200 text-green-700 font-bold py-1.5 px-3 rounded transition-colors ml-auto shadow-sm">Αποθήκευση</button>
-                    <button type="button" class="text-red-500 hover:text-red-700 p-1 delete-btn font-bold text-xl leading-none">&times;</button>
-                </div>
-                ${daysHtml}
-                <div class="w-full slots-container">
-                    ${allSlotsPanels}
-                </div>
-            </div>
-        `;
-
-        const editMode = div.querySelector('.edit-mode');
-        const viewMode = div.querySelector('.view-mode');
-        const displayName = div.querySelector('.display-name');
-        const nameInput = div.querySelector('.name-input');
-        const saveEmpBtn = div.querySelector('.save-emp-btn');
-
-        // Λογική Κουμπιού Αποθήκευσης/Επεξεργασίας
-        saveEmpBtn.addEventListener('click', () => {
-            const name = nameInput.value.trim();
-            if (!name) {
-                alert('Παρακαλώ εισάγετε όνομα εργαζόμενου.');
-                return;
-            }
-            displayName.textContent = name;
-            editMode.classList.add('hidden');
-            viewMode.classList.remove('hidden');
-            
-            updateCalculations();
-            renderCalendar();
-            saveEmployeesToServer(); // Αποθήκευση στη Βάση Δεδομένων!
-        });
-
-        viewMode.addEventListener('click', () => {
-            viewMode.classList.add('hidden');
-            editMode.classList.remove('hidden');
-        });
-
-        // Προσθήκη listeners στα νέα inputs ΚΑΙ selects (για τη βάρδια)
-        div.querySelectorAll('input, select').forEach(element => {
-            element.addEventListener('input', () => {
-                updateCalculations();
-                if (element.classList.contains('day-checkbox') || element.classList.contains('name-input') || element.classList.contains('shift-input-day') || element.classList.contains('hours-input-day')) {
-                    renderCalendar();
-                }
-            });
-        });
-
-        div.querySelectorAll('.toggle-slots-btn-day').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const day = e.currentTarget.closest('.day-wrapper').dataset.day;
-                const panel = div.querySelector(`.time-slots-panel-day[data-day="${day}"]`);
-                if (panel) {
-                    panel.classList.toggle('hidden');
-                    div.querySelectorAll('.time-slots-panel-day').forEach(p => {
-                        if (p !== panel) p.classList.add('hidden');
-                    });
-                }
-            });
-        });
-        
-        div.querySelectorAll('.time-slot-btn-day').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const isSelected = e.target.classList.contains('bg-primary');
-                if (isSelected) {
-                    e.target.className = 'time-slot-btn-day text-xs py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
-                } else {
-                    e.target.className = 'time-slot-btn-day text-xs py-1 border rounded transition-colors bg-primary text-white border-primary';
-                }
-                
-                const day = e.target.closest('.time-slots-panel-day').dataset.day;
-                const panel = div.querySelector(`.time-slots-panel-day[data-day="${day}"]`);
-                const selectedCount = panel.querySelectorAll('.time-slot-btn-day.bg-primary').length;
-                
-                const hoursInputDay = div.querySelector(`.day-wrapper[data-day="${day}"] .hours-input-day`);
-                if (hoursInputDay) {
-                    hoursInputDay.value = selectedCount;
-                }
-                
-                updateCalculations();
-                renderCalendar();
-            });
-        });
-
-        // Διαγραφή εργαζόμενου
-        div.querySelector('.delete-btn').addEventListener('click', () => {
-            div.remove();
-            updateCalculations();
-            renderCalendar();
-            saveEmployeesToServer(); // Διαγραφή από τη Βάση Δεδομένων!
-        });
-
-        return div;
-    };
-
-    // Καθαρίζουμε το HTML (κρυμμένο by default - εμφανίζεται μόνο με προσθήκη)
-    employeeListEl.innerHTML = '';
-
-    addEmployeeBtn.addEventListener('click', () => {
-        employeeListEl.prepend(createEmployeeRow());
-    });
-
     // --- Αποθήκευση στον Server (POST request) ---
     saveDailyBtn.addEventListener('click', async () => {
         const posRev = parseFloat(posRevenueEl.value) || 0;
@@ -1607,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let agathoExpenses = 0;
         let drawerExpenses = 0;
 
-        currentDashboardExpenses.forEach(exp => {
+        appState.currentDashboardExpenses.forEach(exp => {
             totalExpenses += exp.amount;
             if (exp.category === 'agatho') {
                 agathoExpenses += exp.amount;
@@ -1617,20 +1402,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const actualTotalRevenue = posRev + cashRev + drawerExpenses;
-        const officialRevenue = zReceiptDash > 0 ? zReceiptDash : actualTotalRevenue;
-        const actualCashRevenue = cashRev + drawerExpenses;
-
-        if (officialRevenue === 0) {
-            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
-            return;
-        }
-
-        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
-
         const dateStr = recordDateEl.value || new Date().toISOString().split('T')[0];
         const dayOfWeek = new Date(dateStr).getDay();
         const workedEmployees = [];
+        let totalWages = 0;
         
         employeeListEl.querySelectorAll('.employee-row').forEach(row => {
             const checkbox = row.querySelector(`.day-checkbox[data-day="${dayOfWeek}"]`);
@@ -1650,17 +1425,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     const hours = timeSlots.length > 0 ? timeSlots.length : fallbackHours;
+                    const wage = rate * hours;
+                    totalWages += wage;
 
                     workedEmployees.push({
                         staff_id: name,
                         hours_worked: hours,
                         shift_type: shiftType,
-                        total_cost: rate * hours,
+                        total_cost: wage,
                         time_slots: timeSlots
                     });
                 }
             }
         });
+
+        const actualTotalRevenue = posRev + cashRev + drawerExpenses + totalWages;
+        const officialRevenue = zReceiptDash > 0 ? zReceiptDash : actualTotalRevenue;
+        const actualCashRevenue = cashRev + drawerExpenses;
+        
+        // Επιτρέπουμε μηδενικό τζίρο μόνο αν ο χρήστης βρίσκεται στο "Προσθήκη Εξόδων"
+        if (window.currentDayModalMode !== 'expenses' && officialRevenue === 0) {
+            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
+            return;
+        }
+
+        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
 
         const payload = {
             date: dateStr,
@@ -1670,7 +1459,7 @@ document.addEventListener('DOMContentLoaded', () => {
             total_expenses: totalExpenses,
             food_cost_percentage: fcPercentage,
             worked_employees: workedEmployees,
-            detailed_expenses: currentDashboardExpenses,
+            detailed_expenses: appState.currentDashboardExpenses,
             cashier_name: dashCashierName ? dashCashierName.value.trim() : ''
         };
         try {
@@ -1692,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 setTimeout(() => {
                     // Καθαρισμός φόρμας μετά την επιτυχία
-                    currentDashboardExpenses = [];
+                    appState.currentDashboardExpenses = [];
                     updateDashExpensesUI();
                     posRevenueEl.value = '';
                     cashRevenueEl.value = '';
@@ -1725,8 +1514,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Αρχικοποίηση Γραφήματος Food Cost ---
-    const ctx = document.getElementById('foodCostChart').getContext('2d');
-    foodCostChart = new Chart(ctx, {
+    const ctx = foodCostChartCanvas.getContext('2d');
+    appState.foodCostChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
