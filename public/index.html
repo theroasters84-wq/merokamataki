@@ -243,7 +243,7 @@
                         <div>
                             <p class="text-sm text-slate-300 font-medium mb-1">Συνολικό Κόστος Λειτουργίας</p>
                             <p class="text-3xl font-bold text-white tracking-tight" id="totalWeeklyCost">0.00 <span class="text-xl font-normal text-slate-400">€</span></p>
-                            <p class="text-xs text-slate-400 mt-1">Προσωπικό + Πάγια + Μ.Ο. Πρώτων Υλών</p>
+                        <p class="text-xs text-slate-400 mt-1">Προσωπικό (+35% ΕΦΚΑ/Δώρα) + Πάγια + Μ.Ο. Πρώτων Υλών</p>
                         </div>
 
                         <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
@@ -261,6 +261,16 @@
                     <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Εικόνα Ημέρας</h2>
                     
                     <div class="flex-grow flex flex-col justify-center space-y-5">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <p class="text-xs text-gray-600 font-medium mb-1">Καθαρός Τζίρος (άνευ ΦΠΑ)</p>
+                            <p class="text-lg font-bold text-gray-900" id="dailyNetRevenueDisplay">0.00 €</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <p class="text-xs text-gray-600 font-medium mb-1">Αναλογούντα Πάγια (Ημέρας)</p>
+                            <p class="text-lg font-bold text-gray-900" id="dailyBurnRateDisplay">0.00 €</p>
+                        </div>
+                    </div>
                         <div>
                             <p class="text-sm text-gray-600 font-medium mb-1">Ημερήσιο Κόστος Λειτουργίας</p>
                             <p class="text-3xl font-bold text-gray-900 tracking-tight" id="dailyOperatingCost">0.00 <span class="text-xl font-normal text-gray-500">€</span></p>
@@ -311,6 +321,7 @@
                     <div class="bg-green-50 rounded-xl p-6 border border-green-100 flex flex-col items-center justify-center">
                         <p class="text-sm text-green-600 font-medium mb-2 uppercase tracking-wide">Συνολικά Έσοδα</p>
                         <p class="text-4xl font-bold text-green-700" id="reportTotalRevenue">0.00 €</p>
+                    <p class="text-xs text-green-600 mt-2 font-medium" id="reportNetRevenueDisplay">Καθαρός Τζίρος (άνευ ΦΠΑ): 0.00 €</p>
                     </div>
                     
                     <!-- Έξοδα -->
@@ -327,7 +338,7 @@
                     
                     <!-- Πάγια -->
                     <div class="bg-orange-50 rounded-xl p-6 border border-orange-100 flex flex-col items-center justify-center text-center">
-                        <p class="text-sm text-orange-600 font-medium mb-2 uppercase tracking-wide">Πάγια Έξοδα<br><span class="text-xs normal-case opacity-80">(από ρυθμίσεις)</span></p>
+                        <p class="text-sm text-orange-600 font-medium mb-2 uppercase tracking-wide">Αναλογικά Πάγια<br><span class="text-xs normal-case opacity-80">(έως σήμερα)</span></p>
                         <p class="text-4xl font-bold text-orange-700" id="reportFixedCosts">0.00 €</p>
                     </div>
                     
@@ -335,6 +346,33 @@
                     <div class="bg-blue-50 rounded-xl p-6 border border-blue-100 flex flex-col items-center justify-center">
                         <p class="text-sm text-blue-600 font-medium mb-2 uppercase tracking-wide">Καθαρό Κέρδος</p>
                         <p class="text-4xl font-bold text-blue-700" id="reportNetProfit">0.00 €</p>
+                    </div>
+                </div>
+
+                <!-- 🔮 Πρόβλεψη Τέλους Μήνα -->
+                <div class="mt-6 bg-purple-50 rounded-xl p-6 border border-purple-200 flex flex-col md:flex-row items-center justify-between shadow-sm">
+                    <div>
+                        <p class="text-lg text-purple-700 font-bold mb-1 uppercase tracking-wide">🔮 Πρόβλεψη Τέλους Μήνα</p>
+                        <p class="text-sm text-purple-600 normal-case">Εκτιμώμενο Κέρδος με βάση τον μέσο όρο των ημερών που έχουν καταγραφεί.</p>
+                    </div>
+                    <p class="text-4xl font-bold mt-4 md:mt-0" id="reportForecastProfit">0.00 €</p>
+                </div>
+
+                <!-- 🏦 Προβλέψεις Οφειλών (Κουμπαράς) -->
+                <div class="mt-6 bg-orange-50 rounded-xl p-6 border border-orange-200 flex flex-col md:flex-row items-center justify-between shadow-sm">
+                    <div>
+                        <p class="text-lg text-orange-800 font-bold mb-1 uppercase tracking-wide">🏦 Προβλέψεις Οφειλών (Κουμπαράς)</p>
+                        <p class="text-sm text-orange-700 normal-case">Ποσά που πρέπει να κρατηθούν για μελλοντικές πληρωμές φόρων και ασφαλιστικών εισφορών.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-6 mt-4 md:mt-0 text-right md:text-center">
+                        <div>
+                            <p class="text-sm text-orange-700 font-medium">ΦΠΑ προς απόδοση</p>
+                            <p class="text-2xl font-bold text-red-600" id="reportVatProvision">0.00 €</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-orange-700 font-medium">Εκτιμώμενο ΙΚΑ/ΕΦΚΑ</p>
+                            <p class="text-2xl font-bold text-red-600" id="reportIkaProvision">0.00 €</p>
+                        </div>
                     </div>
                 </div>
 

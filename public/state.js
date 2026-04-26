@@ -8,5 +8,11 @@ export const appState = {
     currentDate: new Date(),
     currentModalExpenses: [],
     currentDashboardExpenses: [],
-    currentEditExpenses: []
+    currentEditExpenses: [],
+    actionModalTarget: null,
+    currentDayModalMode: 'closure',
+    currentEditRecordWorkedEmployees: [],
+    AVERAGE_VAT_RATE: 0.13,
+    LABOR_BURDEN_RATE: 1.35,
+    MONTHLY_FIXED_COSTS: 3000
 };
