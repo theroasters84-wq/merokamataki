@@ -1391,16 +1391,25 @@ document.addEventListener('DOMContentLoaded', () => {
             totalPersonnelWeekly += empWeeklyWage;
         });
 
+        // Χρησιμοποιούμε το δυναμικό κυλιόμενο Food Cost. Αν είναι 0 (π.χ. πρώτη μέρα), χρησιμοποιούμε 30% ως default.
+        let averageFoodCostRate = appState.foodCostPercentage > 0 ? (appState.foodCostPercentage / 100) : 0.30;
+
+        // Ασφαλιστική δικλείδα: Αν για κάποιο λόγο το Food Cost πάει πάνω από 100% (π.χ. έκανε τεράστιες αγορές 1η του μήνα με 0 τζίρο), το βάζουμε στο 99% για να μην κρασάρει η διαίρεση με αρνητικό νούμερο.
+        if (averageFoodCostRate >= 1) averageFoodCostRate = 0.99;
+
         // 4. Υπολογισμός Συνολικού Εβδομαδιαίου Κόστους 
-        // (Προσωπικό + Πάγια + Εκτιμώμενα Έξοδα Πρώτων Υλών για 7 ημέρες)
-        const weeklyMaterialsEst = allDashExpenses * 7; 
+        // Αντί να πολλαπλασιάζουμε τα έξοδα της ημέρας * 7 (που προκαλεί τεράστιες αποκλίσεις αν έγινε μεγάλη παραγγελία),
+        // υπολογίζουμε το εκτιμώμενο κόστος υλικών με βάση το κυλιόμενο Food Cost και τον εκτιμώμενο εβδομαδιαίο τζίρο.
+        // Εκτιμώμενος εβδομαδιαίος τζίρος βάσει της σημερινής ημέρας:
+        const estimatedWeeklyRevenue = officialRevenue * 7;
+        const weeklyMaterialsEst = estimatedWeeklyRevenue * averageFoodCostRate;
+
         const totalWeeklyCost = weeklyFixed + totalPersonnelWeekly + weeklyMaterialsEst;
         totalWeeklyCostEl.innerHTML = formatCurrency(totalWeeklyCost);
 
         // 5. Υπολογισμός Νεκρού Σημείου (Break-Even Point Εβδομάδας)
         let breakEven = 0;
         // Νέα φόρμουλα: BreakEven = (Συνολικά Πάγια + Συνολικό Προσωπικό) / (1 - Μέσο Ποσοστό Food Cost)
-        const averageFoodCostRate = 0.30; // 30% default τιμή (θα συνδεθεί με τη βάση αργότερα)
         const grossMargin = 1 - averageFoodCostRate;
         
         if (grossMargin > 0) {
