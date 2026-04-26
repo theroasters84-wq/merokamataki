@@ -80,11 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
             let agatho = 0;
             try {
                 const expenses = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []);
-                expenses.forEach(exp => {
-                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
-                        agatho += parseFloat(exp.amount) || 0;
-                    }
-                });
+                if (expenses && expenses.length > 0) {
+                    expenses.forEach(exp => {
+                        if (exp.category === 'agatho' || exp.category === 'materials' || exp.category === 'ylika') {
+                            agatho += parseFloat(exp.amount) || 0;
+                        }
+                    });
+                } else {
+                    const fc = parseFloat(record.food_cost_percentage) || 0;
+                    agatho = (fc * rev) / 100;
+                }
             } catch(e) {
                 // Fallback για παλιές εγγραφές χωρίς αναλυτικά δεδομένα
                 const fc = parseFloat(record.food_cost_percentage) || 0;
@@ -196,11 +201,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     let dailyAgatho = 0;
                     try {
                         const expenses = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []);
-                        expenses.forEach(exp => {
-                            if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
-                                dailyAgatho += parseFloat(exp.amount) || 0;
-                            }
-                        });
+                        if (expenses && expenses.length > 0) {
+                            expenses.forEach(exp => {
+                                if (exp.category === 'agatho' || exp.category === 'materials' || exp.category === 'ylika') {
+                                    dailyAgatho += parseFloat(exp.amount) || 0;
+                                }
+                            });
+                        } else {
+                            const fc = parseFloat(record.food_cost_percentage) || 0;
+                            dailyAgatho = (fc * rev) / 100;
+                        }
                     } catch(e) {
                         const fc = parseFloat(record.food_cost_percentage) || 0;
                         dailyAgatho = (fc * rev) / 100;
@@ -282,11 +292,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         let expensesData = [];
                         try { expensesData = typeof record.detailed_expenses === 'string' ? JSON.parse(record.detailed_expenses) : (record.detailed_expenses || []); } catch(e) {}
-                        expensesData.forEach(exp => {
-                            if (exp.category === 'agatho' || exp.category === 'materials') group.totalAgatho += parseFloat(exp.amount) || 0;
-                            else if (exp.category === 'ylika') group.totalYlika += parseFloat(exp.amount) || 0;
-                            else group.totalLogariasmos += parseFloat(exp.amount) || 0;
-                        });
+                        
+                        if (expensesData && expensesData.length > 0) {
+                            expensesData.forEach(exp => {
+                                if (exp.category === 'agatho' || exp.category === 'materials') group.totalAgatho += parseFloat(exp.amount) || 0;
+                                else if (exp.category === 'ylika') group.totalYlika += parseFloat(exp.amount) || 0;
+                                else group.totalLogariasmos += parseFloat(exp.amount) || 0;
+                            });
+                        } else {
+                            const fc = parseFloat(record.food_cost_percentage) || 0;
+                            const rev = parseFloat(record.daily_revenue) || 0;
+                            group.totalAgatho += (fc * rev) / 100;
+                        }
 
                         let workedData = [];
                         try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
@@ -308,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dateObj = new Date(group.dateStr);
                         const dateFormatted = dateObj.toLocaleDateString('el-GR');
                         
-                        const fcPercentage = group.totalRev > 0 ? (group.totalAgatho / group.totalRev) * 100 : 0;
+                        const fcPercentage = group.totalRev > 0 ? ((group.totalAgatho + group.totalYlika) / group.totalRev) * 100 : 0;
                         const fcColor = fcPercentage > 40 ? 'text-red-500' : (fcPercentage <= 30 ? 'text-green-500' : 'text-orange-500');
 
                         let expBreakdown = (group.totalAgatho > 0 || group.totalYlika > 0 || group.totalLogariasmos > 0)
@@ -946,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         appState.currentEditExpenses.forEach(exp => {
             totalExpenses += exp.amount;
-            if (exp.category === 'agatho') agathoExpenses += exp.amount;
+            if (exp.category === 'agatho' || exp.category === 'ylika') agathoExpenses += exp.amount;
             if (exp.paidFromDrawer !== false) drawerExpenses += exp.amount;
         });
 
@@ -1116,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appState.currentModalExpenses.forEach(exp => {
             totalExpenses += exp.amount;
-            if (exp.category === 'agatho') {
+            if (exp.category === 'agatho' || exp.category === 'ylika') {
                 agathoExpenses += exp.amount;
             }
             if (exp.paidFromDrawer !== false) {
@@ -1249,7 +1266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let drawerExpenses = 0;
         appState.currentDashboardExpenses.forEach(exp => {
             allDashExpenses += exp.amount;
-            if (exp.category === 'agatho') materials += exp.amount;
+            if (exp.category === 'agatho' || exp.category === 'ylika') materials += exp.amount;
             if (exp.paidFromDrawer !== false) drawerExpenses += exp.amount;
         });
 
@@ -1305,11 +1322,16 @@ document.addEventListener('DOMContentLoaded', () => {
             let dailyAgatho = 0;
             try {
                 const expenses = typeof r.detailed_expenses === 'string' ? JSON.parse(r.detailed_expenses) : (r.detailed_expenses || []);
-                expenses.forEach(exp => {
-                    if (exp.category === 'agatho' || exp.category === 'ylika' || exp.category === 'materials') {
-                        dailyAgatho += parseFloat(exp.amount) || 0;
-                    }
-                });
+                if (expenses && expenses.length > 0) {
+                    expenses.forEach(exp => {
+                        if (exp.category === 'agatho' || exp.category === 'materials' || exp.category === 'ylika') {
+                            dailyAgatho += parseFloat(exp.amount) || 0;
+                        }
+                    });
+                } else {
+                    const fc = parseFloat(r.food_cost_percentage) || 0;
+                    dailyAgatho = (fc * rev) / 100;
+                }
             } catch(e) {
                 const fc = parseFloat(r.food_cost_percentage) || 0;
                 dailyAgatho = (fc * rev) / 100;
@@ -1470,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appState.currentDashboardExpenses.forEach(exp => {
             totalExpenses += exp.amount;
-            if (exp.category === 'agatho') {
+            if (exp.category === 'agatho' || exp.category === 'ylika') {
                 agathoExpenses += exp.amount;
             }
             if (exp.paidFromDrawer !== false) {
