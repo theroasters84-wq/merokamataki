@@ -28,10 +28,6 @@ export const addDashExpenseBtn = document.getElementById('addDashExpenseBtn');
 export const dashExpensesList = document.getElementById('dashExpensesList');
 export const dashTotalExpensesDisplay = document.getElementById('dashTotalExpensesDisplay');
 
-export const monthlyFixedCostsEl = document.getElementById('monthlyFixedCosts');
-export const weeklyFixedDisplayEl = document.getElementById('weeklyFixedDisplay');
-export const editFixedCostsBtn = document.getElementById('editFixedCostsBtn');
-
 export const employeeListEl = document.getElementById('employeeList');
 export const addEmployeeBtn = document.getElementById('addEmployeeBtn');
 
@@ -128,6 +124,14 @@ export const fixedOverheadsInput = document.getElementById('fixedOverheadsInput'
 export const ownerInsuranceInput = document.getElementById('ownerInsuranceInput');
 export const vatRateInput = document.getElementById('vatRateInput');
 export const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+
+// --- Νέα στοιχεία DOM Γρήγορης Εισαγωγής ---
+export const quickImportMonth = document.getElementById('quickImportMonth');
+export const quickImportYear = document.getElementById('quickImportYear');
+export const quickImportRev = document.getElementById('quickImportRev');
+export const quickImportExp = document.getElementById('quickImportExp');
+export const quickImportWages = document.getElementById('quickImportWages');
+export const quickImportBtn = document.getElementById('quickImportBtn');
 
 // --- Κεντρικές Συναρτήσεις Δεδομένων & Γραφήματος (UI View) ---
 export const refreshChartData = (records) => {
@@ -701,9 +705,8 @@ export const updateCalculations = () => {
         foodCostDisplayEl.className = 'text-2xl font-bold text-gray-400';
     }
 
-    const monthlyFixed = parseFloat(monthlyFixedCostsEl.value) || appState.MONTHLY_FIXED_COSTS;
+    const monthlyFixed = appState.MONTHLY_FIXED_COSTS;
     const weeklyFixed = monthlyFixed / 4.3;
-    weeklyFixedDisplayEl.textContent = formatCurrency(weeklyFixed);
     
     const dailyBurnRate = monthlyFixed / 30;
     if (dailyBurnRateDisplayEl) dailyBurnRateDisplayEl.textContent = formatCurrency(dailyBurnRate);

@@ -1,11 +1,11 @@
-import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord, apiGetFixedCosts, apiSetFixedCosts } from './api.js';
+import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
 import { initAuth } from './auth.js';
 import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
 import { formatCurrency, formatTimeSlots } from './utils.js';
 import {
-  installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, monthlyFixedCostsEl, weeklyFixedDisplayEl, editFixedCostsBtn, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
-  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn
+  installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
+  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn
 } from './dom.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,10 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.MONTHLY_FIXED_COSTS = overheads + insurance;
             appState.AVERAGE_VAT_RATE = vat / 100;
 
-            if (monthlyFixedCostsEl) {
-                monthlyFixedCostsEl.value = appState.MONTHLY_FIXED_COSTS;
-            }
-
             alert('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!');
             updateCalculations();
             
@@ -40,6 +36,50 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 fetchDashboardData();
             }
+        });
+    }
+
+    // --- Λογική Γρήγορης Εισαγωγής (Ιστορικό) ---
+    if (quickImportBtn) {
+        quickImportBtn.addEventListener('click', async () => {
+            const m = parseInt(quickImportMonth.value);
+            const y = parseInt(quickImportYear.value);
+            const rev = parseFloat(quickImportRev.value) || 0;
+            const exp = parseFloat(quickImportExp.value) || 0;
+            const wages = parseFloat(quickImportWages.value) || 0;
+            
+            if (rev === 0 && exp === 0) return alert('Παρακαλώ εισάγετε δεδομένα τζίρου ή εξόδων.');
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να αποθηκεύσετε το ιστορικό για τον ${m}/${y};\nΑν υπάρχει ήδη σύνοψη για αυτόν τον μήνα, θα αντικατασταθεί.`)) return;
+
+            const fixedCosts = appState.MONTHLY_FIXED_COSTS;
+            const netRev = rev / (1 + appState.AVERAGE_VAT_RATE);
+            // Υποθέτουμε ότι ο παλιός μήνας ήταν ολόκληρος, άρα αφαιρούμε ολόκληρο το πάγιο
+            const netProfit = netRev - exp - wages - fixedCosts; 
+            
+            const payload = {
+                month: m,
+                year: y,
+                total_revenue: rev,
+                total_expenses: exp,
+                fixed_costs: fixedCosts,
+                net_profit: netProfit,
+                clearData: false
+            };
+
+            try {
+                quickImportBtn.disabled = true;
+                quickImportBtn.textContent = 'Αποθήκευση...';
+                const response = await apiSaveMonthlyReport(payload);
+                
+                if (response.ok) {
+                    alert('Το ιστορικό του μήνα αποθηκεύτηκε επιτυχώς!');
+                    quickImportRev.value = ''; quickImportExp.value = ''; quickImportWages.value = '';
+                    if (appState.currentDate.getMonth() + 1 === m && appState.currentDate.getFullYear() === y) {
+                        if (!monthlyReportView.classList.contains('hidden')) fetchReportBtn.click();
+                    }
+                } else alert('Προέκυψε σφάλμα κατά την αποθήκευση.');
+            } catch (error) { alert('Αδυναμία σύνδεσης με τον server.'); } 
+            finally { quickImportBtn.disabled = false; quickImportBtn.textContent = 'Αποθήκευση Μήνα'; }
         });
     }
 
@@ -63,29 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
         onAuthSuccess: async () => {
-            try {
-                const res = await apiGetFixedCosts();
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.fixed_costs > 0) {
-                        monthlyFixedCostsEl.value = data.fixed_costs;
-                        monthlyFixedCostsEl.disabled = true;
-                        if (editFixedCostsBtn) {
-                            editFixedCostsBtn.textContent = 'Επεξεργασία';
-                            editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
-                        }
-                    } else {
-                        monthlyFixedCostsEl.disabled = false;
-                        if (editFixedCostsBtn) {
-                            editFixedCostsBtn.textContent = 'Αποθήκευση';
-                            editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to fetch fixed costs', e);
-            }
-
             fetchEmployees();
             renderCalendar();
             updateDashExpensesUI();
@@ -184,35 +201,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const totalRev = parseFloat(data.total_revenue) || 0;
                 const totalExp = parseFloat(data.total_expenses) || 0;
-                const fixedCosts = parseFloat(monthlyFixedCostsEl.value) || appState.MONTHLY_FIXED_COSTS;
+                const fixedCosts = appState.MONTHLY_FIXED_COSTS;
                 const netTotalRev = totalRev / (1 + appState.AVERAGE_VAT_RATE);
                 
                 if (reportNetRevenueDisplay) {
                     reportNetRevenueDisplay.textContent = `Καθαρός Τζίρος (άνευ ΦΠΑ): ${formatCurrency(netTotalRev)}`;
                 }
                 
-                let totalPersonnelWeekly = 0;
+                // Υπολογισμός πραγματικού κόστους προσωπικού ΒΑΣΕΙ των καταγεγραμμένων ημερών
+                const wageMap = {};
                 const employeeRows = employeeListEl.querySelectorAll('.employee-row');
                 employeeRows.forEach(row => {
+                    const name = row.querySelector('.name-input').value.trim();
                     const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                    row.querySelectorAll('.day-checkbox:checked').forEach(cb => {
-                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${cb.dataset.day}"]`);
-                        const dayHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
-                        totalPersonnelWeekly += rate * dayHours;
+                    let fallbackHours = 8;
+                    const firstChecked = row.querySelector('.day-checkbox:checked');
+                    if (firstChecked) {
+                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
+                        if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
+                    }
+                    if (name) wageMap[name] = rate * fallbackHours;
+                });
+
+                let actualMonthlyPayroll = 0;
+                records.forEach(record => {
+                    let worked = [];
+                    try { worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || []; } catch(e) {}
+                    worked.forEach(emp => {
+                        if (typeof emp === 'string') actualMonthlyPayroll += (wageMap[emp] || 0);
+                        else actualMonthlyPayroll += (parseFloat(emp.total_cost) || 0);
                     });
                 });
-                const monthlyPersonnelCost = totalPersonnelWeekly * 4.3;
 
                 // Υπολογισμός Προβλέψεων Οφειλών (Κουμπαράς)
                 const monthlyVatProvision = totalRev - netTotalRev;
-                const monthlyIkaProvision = monthlyPersonnelCost * 0.35;
+                const monthlyIkaProvision = actualMonthlyPayroll * 0.35;
 
                 // Υπολογισμός Αναλογικών Παγίων
                 const uniqueDaysRecorded = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
                 const activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
                 const proRataFixedCosts = (fixedCosts / 30) * activeDays;
 
-                const finalNetProfit = netTotalRev - totalExp - monthlyPersonnelCost - proRataFixedCosts;
+                const finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
 
                 // AI Forecast Module
                 const calculateMonthProjection = () => {
@@ -308,20 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to fetch monthly report');
             }
             
-            // Βοηθητικός χάρτης μισθών για υπολογισμό παλιών εγγραφών
-            const wageMap = {};
-            employeeListEl.querySelectorAll('.employee-row').forEach(row => {
-                const name = row.querySelector('.name-input').value.trim();
-                const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                let fallbackHours = 8;
-                const firstChecked = row.querySelector('.day-checkbox:checked');
-                if (firstChecked) {
-                    const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
-                    if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
-                }
-                if (name) wageMap[name] = rate * fallbackHours;
-            });
-
                 renderMonthlyTable(records, wageMap);
                 renderMonthlyChart(records, wageMap);
                 refreshChartData(records);
@@ -345,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const month = appState.currentDate.getMonth() + 1;
         const year = appState.currentDate.getFullYear();
 
-        const fixedCosts = parseFloat(monthlyFixedCostsEl.value) || appState.MONTHLY_FIXED_COSTS;
+        const fixedCosts = appState.MONTHLY_FIXED_COSTS;
         const totalRev = parseFloat(appState.currentReportData.total_revenue) || 0;
         const netTotalRev = totalRev / (1 + appState.AVERAGE_VAT_RATE);
         const totalExp = parseFloat(appState.currentReportData.total_expenses) || 0;
@@ -752,12 +768,18 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.currentDate.setMonth(appState.currentDate.getMonth() - 1);
         renderCalendar();
         fetchDashboardData();
+        if (!monthlyReportView.classList.contains('hidden')) {
+            fetchMonthlyReport();
+        }
     });
 
     nextMonthBtn.addEventListener('click', () => {
         appState.currentDate.setMonth(appState.currentDate.getMonth() + 1);
         renderCalendar();
         fetchDashboardData();
+        if (!monthlyReportView.classList.contains('hidden')) {
+            fetchMonthlyReport();
+        }
     });
 
     closeModalBtn.addEventListener('click', closeDayModal);
@@ -777,35 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
     [posRevenueEl, cashRevenueEl, actualCashEl].forEach(el => {
         el.addEventListener('input', updateCalculations);
     });
-
-    // Ενημέρωση των υπολογισμών κατά την πληκτρολόγηση παγίων (χωρίς αποθήκευση)
-    monthlyFixedCostsEl.addEventListener('input', updateCalculations);
-
-    // Διαχείριση Κουμπιού Παγίων Εξόδων
-    if (editFixedCostsBtn) {
-        editFixedCostsBtn.addEventListener('click', async () => {
-            if (monthlyFixedCostsEl.disabled) {
-                // Ξεκλείδωμα για επεξεργασία
-                monthlyFixedCostsEl.disabled = false;
-                monthlyFixedCostsEl.focus();
-                editFixedCostsBtn.textContent = 'Αποθήκευση';
-                editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
-            } else {
-                // Αποθήκευση και κλείδωμα
-                const val = parseFloat(monthlyFixedCostsEl.value) || 0;
-                try {
-                    editFixedCostsBtn.textContent = '...';
-                    await apiSetFixedCosts(val);
-                } catch (e) {
-                    console.error('Failed to save fixed costs', e);
-                }
-                monthlyFixedCostsEl.disabled = true;
-                editFixedCostsBtn.textContent = 'Επεξεργασία';
-                editFixedCostsBtn.className = 'flex-1 sm:flex-none text-center bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap';
-                updateCalculations();
-            }
-        });
-    }
 
     [posTotal, drawerCash, zReceipt].forEach(el => {
         el.addEventListener('input', updateModalDrawerStatus);

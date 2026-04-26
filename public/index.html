@@ -209,24 +209,9 @@
 
                 <!-- Κάρτα 2: Προσωπικό & Πάγια (Εβδομάδας) -->
                 <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col lg:col-span-2">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Προσωπικό & Πάγια</h2>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Προσωπικό (Εβδομάδας)</h2>
                     
                     <div class="space-y-5">
-                        <!-- Πάγια Έξοδα -->
-                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <label for="monthlyFixedCosts" class="block text-sm font-medium text-gray-700 mb-1">Μηνιαία Πάγια Έξοδα (€)</label>
-                            <p class="text-xs text-gray-500 mb-2">Ενοίκιο, ρεύμα, νερό, λογιστής κλπ.</p>
-                            <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center">
-                                <input type="number" id="monthlyFixedCosts" class="w-full sm:w-auto sm:flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors" placeholder="π.χ. 2500" min="0" step="0.01">
-                                <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-start items-center">
-                                    <button type="button" id="editFixedCostsBtn" class="flex-1 sm:flex-none text-center bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap">Αποθήκευση</button>
-                                    <span class="flex-1 sm:flex-none text-center text-sm font-medium text-gray-600 bg-white px-2 py-2 border rounded-lg whitespace-nowrap">
-                                        = <span id="weeklyFixedDisplay">0,00 €</span> /εβδ
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Προσωπικό -->
                         <div>
                             <h3 class="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
@@ -321,6 +306,43 @@
                     Αποθήκευση Ρυθμίσεων
                 </button>
             </div>
+
+            <!-- 📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα -->
+            <div class="admin-only hidden mt-8 bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα</h2>
+                <p class="text-sm text-gray-600 mb-4">Καταχωρήστε συνοπτικά τα δεδομένα ενός παλιού μήνα (απευθείας στη Σύνοψη), χωρίς να χρειάζεται να περάσετε τα ταμεία μέρα-μέρα.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Μήνας</label>
+                        <select id="quickImportMonth" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none">
+                            <option value="1">Ιανουάριος</option><option value="2">Φεβρουάριος</option><option value="3">Μάρτιος</option>
+                            <option value="4">Απρίλιος</option><option value="5">Μάιος</option><option value="6">Ιούνιος</option>
+                            <option value="7">Ιούλιος</option><option value="8">Αύγουστος</option><option value="9">Σεπτέμβριος</option>
+                            <option value="10">Οκτώβριος</option><option value="11">Νοέμβριος</option><option value="12">Δεκέμβριος</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Έτος</label>
+                        <input type="number" id="quickImportYear" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" value="2026">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Μικτός Τζίρος (€)</label>
+                        <input type="number" id="quickImportRev" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 15000">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Έξοδα Υλικών/Λογαρ. (€)</label>
+                        <input type="number" id="quickImportExp" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 5000">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Μεροκάματα (€)</label>
+                        <input type="number" id="quickImportWages" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 3000">
+                    </div>
+                </div>
+                <button id="quickImportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-sm">
+                    Αποθήκευση Μήνα
+                </button>
+            </div>
             </div>
 
             <!-- Κάρτα 5: Γράφημα -->
@@ -372,6 +394,7 @@
                     <div class="bg-blue-50 rounded-xl p-6 border border-blue-100 flex flex-col items-center justify-center">
                         <p class="text-sm text-blue-600 font-medium mb-2 uppercase tracking-wide">Καθαρό Κέρδος</p>
                         <p class="text-4xl font-bold text-blue-700" id="reportNetProfit">0.00 €</p>
+                        <p class="text-[10px] text-blue-500 mt-2 text-center leading-tight">Καθαρός Τζίρος - Έξοδα - Μεροκάματα - Πάγια<br>(Δεν έχει αφαιρεθεί το ΙΚΑ)</p>
                     </div>
                 </div>
 
