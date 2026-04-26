@@ -4,11 +4,61 @@ import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
 import { formatCurrency, formatTimeSlots } from './utils.js';
 import {
-  installAppBtn, logoutBtn, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, monthlyFixedCostsEl, weeklyFixedDisplayEl, editFixedCostsBtn, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
-  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision
+  installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, monthlyFixedCostsEl, weeklyFixedDisplayEl, editFixedCostsBtn, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
+  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn
 } from './dom.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Αρχικοποίηση Πεδίων Ρυθμίσεων ---
+    if (fixedOverheadsInput) fixedOverheadsInput.value = localStorage.getItem('fixedOverheads') || 0;
+    if (ownerInsuranceInput) ownerInsuranceInput.value = localStorage.getItem('ownerInsurance') || 0;
+    if (vatRateInput) vatRateInput.value = localStorage.getItem('vatRate') !== null ? localStorage.getItem('vatRate') : 13;
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            const overheads = parseFloat(fixedOverheadsInput.value) || 0;
+            const insurance = parseFloat(ownerInsuranceInput.value) || 0;
+            const vat = parseFloat(vatRateInput.value) || 13;
+
+            localStorage.setItem('fixedOverheads', overheads);
+            localStorage.setItem('ownerInsurance', insurance);
+            localStorage.setItem('vatRate', vat);
+
+            appState.MONTHLY_FIXED_COSTS = overheads + insurance;
+            appState.AVERAGE_VAT_RATE = vat / 100;
+
+            if (monthlyFixedCostsEl) {
+                monthlyFixedCostsEl.value = appState.MONTHLY_FIXED_COSTS;
+            }
+
+            alert('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!');
+            updateCalculations();
+            
+            if (!monthlyReportView.classList.contains('hidden')) {
+                fetchReportBtn.click(); // Αναγκαστικό refresh
+            } else {
+                fetchDashboardData();
+            }
+        });
+    }
+
+    // --- Λογική Help Modal (Οδηγίες Χρήσης) ---
+    if (helpBtn) {
+        helpBtn.addEventListener('click', () => {
+            if (helpModal) helpModal.classList.remove('hidden');
+        });
+    }
+    const closeHelp = () => {
+        if (helpModal) helpModal.classList.add('hidden');
+    };
+    if (closeHelpModalBtn) closeHelpModalBtn.addEventListener('click', closeHelp);
+    if (closeHelpModalBtnBottom) closeHelpModalBtnBottom.addEventListener('click', closeHelp);
+    if (helpModal) {
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) closeHelp();
+        });
+    }
 
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
@@ -152,18 +202,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
                 const monthlyPersonnelCost = totalPersonnelWeekly * 4.3;
-                const realMonthlyPersonnelCost = monthlyPersonnelCost * appState.LABOR_BURDEN_RATE;
 
                 // Υπολογισμός Προβλέψεων Οφειλών (Κουμπαράς)
                 const monthlyVatProvision = totalRev - netTotalRev;
-                const monthlyIkaProvision = realMonthlyPersonnelCost - monthlyPersonnelCost;
+                const monthlyIkaProvision = monthlyPersonnelCost * 0.35;
 
                 // Υπολογισμός Αναλογικών Παγίων
                 const uniqueDaysRecorded = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
                 const activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
                 const proRataFixedCosts = (fixedCosts / 30) * activeDays;
 
-                const finalNetProfit = netTotalRev - totalExp - realMonthlyPersonnelCost - proRataFixedCosts;
+                const finalNetProfit = netTotalRev - totalExp - monthlyPersonnelCost - proRataFixedCosts;
 
                 // AI Forecast Module
                 const calculateMonthProjection = () => {
@@ -191,9 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             else actualPayrollSoFar += (parseFloat(emp.total_cost) || 0);
                         });
                     });
-                    const realActualPayroll = actualPayrollSoFar * appState.LABOR_BURDEN_RATE;
 
-                    const avgDailyExp = (totalExp + realActualPayroll) / activeDays;
+                    const avgDailyExp = (totalExp + actualPayrollSoFar) / activeDays;
                     const forecastProfit = (avgDailyNetRev * 30) - (avgDailyExp * 30) - fixedCosts;
                     
                     if (reportForecastProfit) {
@@ -275,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
                 renderMonthlyTable(records, wageMap);
+                renderMonthlyChart(records, wageMap);
                 refreshChartData(records);
         } catch (error) {
             console.error('Error fetching monthly report:', error);
@@ -329,12 +378,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const realMonthlyPayroll = actualMonthlyPayroll * appState.LABOR_BURDEN_RATE;
-        
         const uniqueDaysRecorded = new Set(appState.currentMonthlyRecords.map(r => r.date ? r.date.substring(0, 10) : '')).size;
         const activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
         const proRataFixedCosts = (fixedCosts / 30) * activeDays;
-        const finalNetProfit = netTotalRev - totalExp - realMonthlyPayroll - proRataFixedCosts;
+        const finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
 
         const payload = {
             month,

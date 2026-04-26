@@ -4,6 +4,10 @@ import { formatCurrency, formatTimeSlots } from './utils.js';
 // --- Auth DOM Στοιχεία ---
 export const installAppBtn = document.getElementById('installAppBtn');
 export const logoutBtn = document.getElementById('logoutBtn');
+export const helpBtn = document.getElementById('helpBtn');
+export const helpModal = document.getElementById('helpModal');
+export const closeHelpModalBtn = document.getElementById('closeHelpModalBtn');
+export const closeHelpModalBtnBottom = document.getElementById('closeHelpModalBtnBottom');
 
 // --- Επιλογή Στοιχείων DOM ---
 export const recordDateEl = document.getElementById('recordDate');
@@ -117,6 +121,13 @@ export const dailyBurnRateDisplayEl = document.getElementById('dailyBurnRateDisp
 export const reportForecastProfit = document.getElementById('reportForecastProfit');
 export const reportVatProvision = document.getElementById('reportVatProvision');
 export const reportIkaProvision = document.getElementById('reportIkaProvision');
+export const monthlyChartCanvas = document.getElementById('monthlyChart');
+
+// --- Νέα στοιχεία DOM Ρυθμίσεων ---
+export const fixedOverheadsInput = document.getElementById('fixedOverheadsInput');
+export const ownerInsuranceInput = document.getElementById('ownerInsuranceInput');
+export const vatRateInput = document.getElementById('vatRateInput');
+export const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 
 // --- Κεντρικές Συναρτήσεις Δεδομένων & Γραφήματος (UI View) ---
 export const refreshChartData = (records) => {
@@ -309,6 +320,68 @@ export const updateModalDrawerStatus = () => {
     }
 };
 
+export const renderMonthlyChart = (records, wageMap) => {
+    if (!monthlyChartCanvas) return;
+
+    // 1. Ομαδοποίηση δεδομένων ανά ημέρα
+    const recordsByDate = {};
+    [...records].reverse().forEach(record => {
+        const dateStr = record.date;
+        if (!recordsByDate[dateStr]) {
+            recordsByDate[dateStr] = { dateStr: dateStr, totalRev: 0, totalExp: 0, totalWages: 0 };
+        }
+        const group = recordsByDate[dateStr];
+        group.totalRev += parseFloat(record.daily_revenue) || 0;
+        group.totalExp += parseFloat(record.total_expenses) || 0;
+
+        let workedData = [];
+        try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
+        workedData.forEach(emp => {
+            if (typeof emp === 'string') group.totalWages += (wageMap[emp] || 0);
+            else group.totalWages += (parseFloat(emp.total_cost) || 0);
+        });
+    });
+
+    // Ταξινόμηση ημερομηνιών αύξουσα για τον άξονα Χ
+    const sortedDates = Object.keys(recordsByDate).sort((a, b) => new Date(a) - new Date(b));
+    
+    const labels = [];
+    const netRevenues = [];
+    const totalExpenses = [];
+
+    sortedDates.forEach(dateStr => {
+        const group = recordsByDate[dateStr];
+        const dateObj = new Date(group.dateStr);
+        labels.push(`${dateObj.getDate()}/${dateObj.getMonth() + 1}`);
+
+        // Υπολογισμός πραγματικών ποσών (Καθαρός Τζίρος & Πραγματικά Έξοδα)
+        const netRev = group.totalRev / (1 + appState.AVERAGE_VAT_RATE);
+        const totalDailyCost = group.totalExp + group.totalWages;
+
+        netRevenues.push(netRev.toFixed(2));
+        totalExpenses.push(totalDailyCost.toFixed(2));
+    });
+
+    // 2. Καταστροφή προηγούμενου γραφήματος αν υπάρχει
+    if (appState.monthlyChart) {
+        appState.monthlyChart.destroy();
+    }
+
+    // 3. Render νέου γραφήματος
+    const ctx = monthlyChartCanvas.getContext('2d');
+    appState.monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Καθαρός Τζίρος (€)', data: netRevenues, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderColor: 'rgb(16, 185, 129)', borderWidth: 1 },
+                { label: 'Συνολικά Έξοδα (€)', data: totalExpenses, backgroundColor: 'rgba(239, 68, 68, 0.8)', borderColor: 'rgb(239, 68, 68)', borderWidth: 1 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'top' } } }
+    });
+};
+
 export const openDayModal = (year, month, day, mode = 'closure') => {
     appState.currentDayModalMode = mode;
     const targetDate = new Date(year, month, day);
@@ -356,8 +429,7 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             currentTotal += cost;
         });
         const totalSpan = modalShiftsList.querySelector('.modal-staff-total-val');
-        const realLaborCost = currentTotal * appState.LABOR_BURDEN_RATE;
-        if (totalSpan) totalSpan.innerHTML = `${formatCurrency(realLaborCost)} <br><span class="text-[9px] text-gray-500 font-normal leading-tight block text-right mt-1">(Συμπεριλαμβάνονται εκτιμώμενες εισφορές & δώρα 35%)</span>`;
+        if (totalSpan) totalSpan.textContent = formatCurrency(currentTotal);
         
         updateModalDrawerStatus();
     };
@@ -648,25 +720,24 @@ export const updateCalculations = () => {
         });
         totalPersonnelWeekly += empWeeklyWage;
     });
-    const realTotalPersonnelWeekly = totalPersonnelWeekly * appState.LABOR_BURDEN_RATE;
 
     let averageFoodCostRate = appState.foodCostPercentage > 0 ? (appState.foodCostPercentage / 100) : 0.30;
     if (averageFoodCostRate >= 1) averageFoodCostRate = 0.99;
 
     const estimatedWeeklyRevenue = netRevenue * 7;
     const weeklyMaterialsEst = estimatedWeeklyRevenue * averageFoodCostRate;
-    const totalWeeklyCost = weeklyFixed + realTotalPersonnelWeekly + weeklyMaterialsEst;
+    const totalWeeklyCost = weeklyFixed + totalPersonnelWeekly + weeklyMaterialsEst;
     totalWeeklyCostEl.innerHTML = formatCurrency(totalWeeklyCost);
 
     let breakEven = 0;
     const grossMargin = 1 - averageFoodCostRate;
     
-    if (grossMargin > 0) breakEven = (weeklyFixed + realTotalPersonnelWeekly) / grossMargin;
+    if (grossMargin > 0) breakEven = (weeklyFixed + totalPersonnelWeekly) / grossMargin;
     if (breakEven > 0 && isFinite(breakEven)) breakEvenPointEl.innerHTML = formatCurrency(breakEven);
     else breakEvenPointEl.innerHTML = formatCurrency(0);
 
     const dailyFixedCost = dailyBurnRate;
-    const dailyStaffCost = realTotalPersonnelWeekly / 7;
+    const dailyStaffCost = totalPersonnelWeekly / 7;
     const totalDailyCost = dailyFixedCost + dailyStaffCost + allDashExpenses;
 
     dailyOperatingCostEl.innerHTML = formatCurrency(totalDailyCost);
@@ -743,7 +814,6 @@ export const renderMonthlyTable = (records, wageMap) => {
                 ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Εξόδων:\\n\\n🍎 Αγαθά: ${formatCurrency(group.totalAgatho)}\\n📦 Υλικά: ${formatCurrency(group.totalYlika)}\\n📄 Λογαριασμοί: ${formatCurrency(group.totalLogariasmos)}')">Αγ: ${formatCurrency(group.totalAgatho)} | Υλ: ${formatCurrency(group.totalYlika)} | Λογ: ${formatCurrency(group.totalLogariasmos)}</span>` : '';
 
             const workedArray = Array.from(group.workedNames);
-            const realWages = group.totalWages * appState.LABOR_BURDEN_RATE;
             let wagesBreakdown = workedArray.length > 0 
                 ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedArray.join('\\n👤 ')}')">${workedArray.length > 2 ? workedArray.slice(0,2).join(', ') + '...' : workedArray.join(', ')}</span>`
                 : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
@@ -784,8 +854,7 @@ export const renderMonthlyTable = (records, wageMap) => {
                     <span class="font-medium">${formatCurrency(group.totalExp)}</span>${expBreakdown}
                 </td>
                 <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(realWages)}</span><br>
-                    <span class="text-[9px] text-gray-500">(Με 35% προσαύξηση)</span>${wagesBreakdown}
+                    <span class="font-medium">${formatCurrency(group.totalWages)}</span>${wagesBreakdown}
                 </td>
                 <td class="px-6 py-3 text-sm font-semibold align-top ${fcColor}">${fcPercentage.toFixed(1)}%</td>
                 <td class="px-4 py-2 text-sm text-center align-top">${actionsHtml}</td>
