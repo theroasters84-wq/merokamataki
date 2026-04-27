@@ -88,7 +88,8 @@ export function initAuth({ onAuthSuccess }) {
     };
 
     if (loginBtn) {
-        loginBtn.addEventListener('click', async () => {
+        loginBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const email = loginEmail.value.trim();
             const password = loginPassword.value;
             if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
@@ -113,13 +114,15 @@ export function initAuth({ onAuthSuccess }) {
     }
 
     if (showRegisterBtn && showLoginBtn) {
-        showRegisterBtn.addEventListener('click', () => {
+        showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             loginFormArea.classList.add('hidden');
             registerFormArea.classList.remove('hidden');
             if (authSubtitle) authSubtitle.textContent = 'Δημιουργήστε λογαριασμό για το νέο σας κατάστημα';
         });
 
-        showLoginBtn.addEventListener('click', () => {
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             registerFormArea.classList.add('hidden');
             loginFormArea.classList.remove('hidden');
             if (authSubtitle) authSubtitle.textContent = 'Συνδεθείτε για να διαχειριστείτε το κατάστημά σας';
@@ -127,7 +130,8 @@ export function initAuth({ onAuthSuccess }) {
     }
 
     if (registerBtn) {
-        registerBtn.addEventListener('click', async () => {
+        registerBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const email = registerEmail.value.trim();
             const password = registerPassword.value;
             const storeName = registerStoreName.value.trim();
@@ -177,7 +181,10 @@ export function initAuth({ onAuthSuccess }) {
     };
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
     }
 
     // --- Secret Tap (Λειτουργία Υπαλλήλου) ---
@@ -212,7 +219,8 @@ export function initAuth({ onAuthSuccess }) {
 
     // --- Λογική PIN Modals ---
     if (saveSetPinBtn) {
-        saveSetPinBtn.addEventListener('click', async () => {
+        saveSetPinBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const pin = newPinInput.value.trim();
             if (!pin) return alert('Παρακαλώ εισάγετε PIN.');
             try {
@@ -231,10 +239,16 @@ export function initAuth({ onAuthSuccess }) {
         });
     }
 
-    if (closeVerifyPinBtn) closeVerifyPinBtn.addEventListener('click', () => verifyPinModal.classList.add('hidden'));
+    if (closeVerifyPinBtn) {
+        closeVerifyPinBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            verifyPinModal.classList.add('hidden');
+        });
+    }
 
     if (verifyPinBtn) {
-        verifyPinBtn.addEventListener('click', async () => {
+        verifyPinBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const pin = verifyPinInput.value.trim();
             if (!pin) return;
             try {
@@ -254,7 +268,8 @@ export function initAuth({ onAuthSuccess }) {
     }
 
     if (forgotPinBtn) {
-        forgotPinBtn.addEventListener('click', async () => {
+        forgotPinBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             try {
                 const res = await apiForgotPin();
                 const data = await res.json();

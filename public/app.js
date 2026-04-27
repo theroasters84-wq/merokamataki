@@ -1087,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Η εφαρμογή εγκαταστάθηκε επιτυχώς!');
     });
 
+    initEmployees(updateCalculations, renderCalendar);
     // Εκκίνηση Εφαρμογής - Έλεγχος Auth αντί για άμεσο φόρτωμα
     checkAuth();
 });
