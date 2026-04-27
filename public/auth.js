@@ -102,7 +102,7 @@ export function initAuth({ onAuthSuccess }) {
                     localStorage.setItem('hasPin', data.hasPin);
                     loginEmail.value = '';
                     loginPassword.value = '';
-                    checkAuth(); // Προχωράει στο Dashboard
+                    window.location.reload(); // Προχωράει στο Dashboard με καθαρό DOM
                 } else {
                     alert(data.error || 'Λάθος στοιχεία.');
                 }
@@ -155,7 +155,7 @@ export function initAuth({ onAuthSuccess }) {
                         registerEmail.value = '';
                         registerPassword.value = '';
                         registerStoreName.value = '';
-                        checkAuth(); 
+                        window.location.reload(); 
                     } else {
                         alert('Η εγγραφή πέτυχε, αλλά απέτυχε η αυτόματη σύνδεση. Παρακαλώ συνδεθείτε χειροκίνητα.');
                         showLoginBtn.click();
@@ -177,7 +177,7 @@ export function initAuth({ onAuthSuccess }) {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('isAdmin');
-        checkAuth(); // Επιστροφή στην οθόνη login
+        window.location.reload(); // Επιστροφή στην οθόνη login
     };
 
     if (logoutBtn) {
