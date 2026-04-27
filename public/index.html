@@ -456,15 +456,20 @@
                 </div>
 
                 <div class="mt-8 text-center border-t border-gray-200 pt-6">
-                    <label class="inline-flex items-center gap-2 mb-4 cursor-pointer">
-                        <input type="checkbox" id="clearDataCheckbox" class="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary">
-                        <span class="text-sm text-gray-700 font-medium">Διαγραφή αναλυτικών ημερήσιων δεδομένων (για εξοικονόμηση χώρου)</span>
-                    </label>
+                    <div id="closeMonthOptions" class="inline-flex items-center gap-2 mb-4 cursor-pointer">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="clearDataCheckbox" class="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary">
+                            <span class="text-sm text-gray-700 font-medium">Διαγραφή αναλυτικών ημερήσιων δεδομένων (για εξοικονόμηση χώρου)</span>
+                        </label>
+                    </div>
                     <br>
                     <button id="closeMonthBtn" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-lg">
                         Οριστικό Κλείσιμο Μήνα
                     </button>
-                    <p class="text-xs text-gray-500 mt-2">Αποθηκεύει τα τρέχοντα αποτελέσματα μόνιμα στη βάση δεδομένων.</p>
+                    <button id="reopenMonthBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-lg ml-2">
+                        🔓 Ακύρωση Κλεισίματος
+                    </button>
+                    <p id="closeMonthDesc" class="text-xs text-gray-500 mt-2">Αποθηκεύει τα τρέχοντα αποτελέσματα μόνιμα στη βάση δεδομένων.</p>
                 </div>
             </div>
         </div>

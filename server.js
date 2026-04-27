@@ -505,6 +505,24 @@ app.post('/api/monthly-report', authenticateToken, async (req, res) => {
   }
 });
 
+app.delete('/api/monthly-report/:month/:year', authenticateToken, async (req, res) => {
+  try {
+    const store_id = req.user.storeId;
+    const { month, year } = req.params;
+    
+    const query = `
+      DELETE FROM monthly_summaries
+      WHERE store_id = $1 AND month = $2 AND year = $3
+    `;
+    await pool.query(query, [store_id, month, year]);
+    
+    res.json({ message: 'Η σύνοψη διαγράφηκε (Ο μήνας άνοιξε ξανά)!' });
+  } catch (error) {
+    console.error('Error deleting monthly summary:', error);
+    res.status(500).json({ error: 'Server Error. Αδυναμία διαγραφής συνόψεων.' });
+  }
+});
+
 const startServer = async () => {
   try {
     // Αρχικοποίηση πινάκων της βάσης

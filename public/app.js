@@ -1,11 +1,11 @@
-import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
+import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiDeleteMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
 import { initAuth } from './auth.js';
 import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
 import { formatCurrency, formatTimeSlots } from './utils.js';
 import {
   installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
-  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn
+  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn, reopenMonthBtn, closeMonthOptions, closeMonthDesc
 } from './dom.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -194,6 +194,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to fetch daily records');
             }
 
+            // Υπολογισμός πραγματικού κόστους προσωπικού ΒΑΣΕΙ των καταγεγραμμένων ημερών
+            const wageMap = {};
+            const employeeRows = employeeListEl.querySelectorAll('.employee-row');
+            employeeRows.forEach(row => {
+                const name = row.querySelector('.name-input').value.trim();
+                const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+                let fallbackHours = 8;
+                const firstChecked = row.querySelector('.day-checkbox:checked');
+                if (firstChecked) {
+                    const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
+                    if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
+                }
+                if (name) wageMap[name] = rate * fallbackHours;
+            });
+
             const response = await apiFetchMonthlyReport(month, year);
             if (response.ok) {
                 const data = await response.json();
@@ -201,28 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const totalRev = parseFloat(data.total_revenue) || 0;
                 const totalExp = parseFloat(data.total_expenses) || 0;
-                const fixedCosts = appState.MONTHLY_FIXED_COSTS;
+                const isClosedMonth = data.fixed_costs !== undefined;
+                const fixedCosts = isClosedMonth ? parseFloat(data.fixed_costs) : appState.MONTHLY_FIXED_COSTS;
                 const netTotalRev = totalRev / (1 + appState.AVERAGE_VAT_RATE);
                 
                 if (reportNetRevenueDisplay) {
                     reportNetRevenueDisplay.textContent = `Καθαρός Τζίρος (άνευ ΦΠΑ): ${formatCurrency(netTotalRev)}`;
                 }
                 
-                // Υπολογισμός πραγματικού κόστους προσωπικού ΒΑΣΕΙ των καταγεγραμμένων ημερών
-                const wageMap = {};
-                const employeeRows = employeeListEl.querySelectorAll('.employee-row');
-                employeeRows.forEach(row => {
-                    const name = row.querySelector('.name-input').value.trim();
-                    const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                    let fallbackHours = 8;
-                    const firstChecked = row.querySelector('.day-checkbox:checked');
-                    if (firstChecked) {
-                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
-                        if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
-                    }
-                    if (name) wageMap[name] = rate * fallbackHours;
-                });
-
                 let actualMonthlyPayroll = 0;
                 records.forEach(record => {
                     let worked = [];
@@ -237,12 +238,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const monthlyVatProvision = totalRev - netTotalRev;
                 const monthlyIkaProvision = actualMonthlyPayroll * 0.35;
 
-                // Υπολογισμός Αναλογικών Παγίων
-                const uniqueDaysRecorded = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
-                const activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
-                const proRataFixedCosts = (fixedCosts / 30) * activeDays;
+                let finalNetProfit;
+                let proRataFixedCosts;
+                let activeDays = 1;
 
-                const finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
+                if (isClosedMonth) {
+                    proRataFixedCosts = fixedCosts;
+                    finalNetProfit = parseFloat(data.net_profit);
+                } else {
+                    // Υπολογισμός Αναλογικών Παγίων
+                    const uniqueDaysRecorded = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
+                    activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
+                    proRataFixedCosts = (fixedCosts / 30) * activeDays;
+                    finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
+                }
 
                 // AI Forecast Module
                 const calculateMonthProjection = () => {
@@ -281,7 +290,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         else reportForecastProfit.className = 'text-4xl font-bold text-gray-700 mt-4 md:mt-0';
                     }
                 };
-                calculateMonthProjection();
+                
+                if (isClosedMonth) {
+                    if (reportForecastProfit) {
+                        reportForecastProfit.textContent = formatCurrency(finalNetProfit);
+                        reportForecastProfit.className = finalNetProfit > 0 ? 'text-4xl font-bold text-blue-600 mt-4 md:mt-0' : 'text-4xl font-bold text-gray-700 mt-4 md:mt-0';
+                        const titleEl = reportForecastProfit.previousElementSibling?.querySelector('p.uppercase');
+                        const subEl = reportForecastProfit.previousElementSibling?.querySelector('p.normal-case');
+                        if (titleEl) titleEl.textContent = '📌 Αποτέλεσμα Μήνα';
+                        if (subEl) subEl.textContent = 'Οριστικό καθαρό κέρδος (Ο μήνας έχει κλείσει).';
+                    }
+                    
+                    if (closeMonthBtn) closeMonthBtn.classList.add('hidden');
+                    if (closeMonthOptions) closeMonthOptions.classList.add('hidden');
+                    if (reopenMonthBtn) reopenMonthBtn.classList.remove('hidden');
+                    if (closeMonthDesc) closeMonthDesc.textContent = 'Ο μήνας είναι οριστικά κλεισμένος. Μπορείτε να ακυρώσετε το κλείσιμο για να συνεχίσετε την καταγραφή.';
+                } else {
+                    if (reportForecastProfit) {
+                        const titleEl = reportForecastProfit.previousElementSibling?.querySelector('p.uppercase');
+                        const subEl = reportForecastProfit.previousElementSibling?.querySelector('p.normal-case');
+                        if (titleEl) titleEl.textContent = '🔮 Πρόβλεψη Τέλους Μήνα';
+                        if (subEl) subEl.textContent = 'Εκτιμώμενο Κέρδος με βάση τον μέσο όρο των ημερών που έχουν καταγραφεί.';
+                    }
+                    calculateMonthProjection();
+                    
+                    if (closeMonthBtn) closeMonthBtn.classList.remove('hidden');
+                    if (closeMonthOptions) closeMonthOptions.classList.remove('hidden');
+                    if (reopenMonthBtn) reopenMonthBtn.classList.add('hidden');
+                    if (closeMonthDesc) closeMonthDesc.textContent = 'Αποθηκεύει τα τρέχοντα αποτελέσματα μόνιμα στη βάση δεδομένων.';
+                }
 
                 // Υπολογισμός Κυλιόμενου Food Cost Μήνα ΜΟΝΟ με Αγαθά (Πρώτες Ύλες)
                 let monthlyAgatho = 0;
@@ -307,15 +344,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     monthlyAgatho += dailyAgatho;
                 });
                 
-                const avgFoodCost = netTotalRev > 0 ? (monthlyAgatho / netTotalRev) * 100 : 0;
-                reportAverageFoodCost.textContent = netTotalRev > 0 ? avgFoodCost.toFixed(1) + '%' : '-%';
-                reportAverageFoodCost.className = 'text-4xl font-bold';
-                if (netTotalRev > 0) {
-                    if (avgFoodCost <= 30) reportAverageFoodCost.classList.add('text-green-500');
-                    else if (avgFoodCost <= 40) reportAverageFoodCost.classList.add('text-orange-500');
-                    else reportAverageFoodCost.classList.add('text-red-500');
+                if (records.length === 0 && isClosedMonth) {
+                    reportAverageFoodCost.textContent = 'N/A';
+                    reportAverageFoodCost.className = 'text-4xl font-bold text-gray-400';
                 } else {
-                    reportAverageFoodCost.classList.add('text-gray-400');
+                    const avgFoodCost = netTotalRev > 0 ? (monthlyAgatho / netTotalRev) * 100 : 0;
+                    reportAverageFoodCost.textContent = netTotalRev > 0 ? avgFoodCost.toFixed(1) + '%' : '-%';
+                    reportAverageFoodCost.className = 'text-4xl font-bold';
+                    if (netTotalRev > 0) {
+                        if (avgFoodCost <= 30) reportAverageFoodCost.classList.add('text-green-500');
+                        else if (avgFoodCost <= 40) reportAverageFoodCost.classList.add('text-orange-500');
+                        else reportAverageFoodCost.classList.add('text-red-500');
+                    } else {
+                        reportAverageFoodCost.classList.add('text-gray-400');
+                    }
                 }
 
                 reportTotalRevenue.textContent = formatCurrency(totalRev);
@@ -423,6 +465,27 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Αδυναμία αποθήκευσης συνόψεων.');
         }
     });
+
+    if (reopenMonthBtn) {
+        reopenMonthBtn.addEventListener('click', async () => {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε το κλείσιμο του μήνα;\nΑυτό θα διαγράψει την οριστική σύνοψη και θα επανέλθει στον δυναμικό υπολογισμό.')) return;
+            const month = appState.currentDate.getMonth() + 1;
+            const year = appState.currentDate.getFullYear();
+            try {
+                const response = await apiDeleteMonthlyReport(month, year);
+                if (response.ok) {
+                    alert('Το κλείσιμο ακυρώθηκε. Ο μήνας άνοιξε ξανά!');
+                    fetchMonthlyReport();
+                    fetchDashboardData();
+                } else {
+                    alert('Προέκυψε σφάλμα κατά την ακύρωση.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Αδυναμία σύνδεσης με τον server.');
+            }
+        });
+    }
     // Κάνουμε τη συνάρτηση διαθέσιμη στο window για το inline onclick
     window.removeModalExpense = (index) => {
         appState.currentModalExpenses.splice(index, 1);

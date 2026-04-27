@@ -67,6 +67,9 @@ export const reportFixedCosts = document.getElementById('reportFixedCosts');
 export const reportNetProfit = document.getElementById('reportNetProfit');
 export const fetchReportBtn = document.getElementById('fetchReportBtn');
 export const closeMonthBtn = document.getElementById('closeMonthBtn');
+export const reopenMonthBtn = document.getElementById('reopenMonthBtn');
+export const closeMonthOptions = document.getElementById('closeMonthOptions');
+export const closeMonthDesc = document.getElementById('closeMonthDesc');
 
 export const monthlyRecordsList = document.getElementById('monthlyRecordsList');
 export const clearDataCheckbox = document.getElementById('clearDataCheckbox');
@@ -326,6 +329,28 @@ export const updateModalDrawerStatus = () => {
 
 export const renderMonthlyChart = (records, wageMap) => {
     if (!monthlyChartCanvas) return;
+
+    const container = monthlyChartCanvas.parentElement;
+    let emptyMsg = container.querySelector('.empty-chart-msg');
+
+    if (!records || records.length === 0) {
+        if (appState.monthlyChart) {
+            appState.monthlyChart.destroy();
+            appState.monthlyChart = null;
+        }
+        monthlyChartCanvas.classList.add('hidden');
+        if (!emptyMsg) {
+            emptyMsg = document.createElement('div');
+            emptyMsg.className = 'empty-chart-msg absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-gray-500 italic rounded-lg border border-dashed border-gray-200 p-4 text-center';
+            emptyMsg.innerHTML = '<span class="text-2xl mb-2">📉</span><span>Δεν υπάρχουν αναλυτικά ημερήσια δεδομένα για τη δημιουργία γραφήματος.</span>';
+            container.appendChild(emptyMsg);
+        }
+        emptyMsg.classList.remove('hidden');
+        return;
+    } else {
+        monthlyChartCanvas.classList.remove('hidden');
+        if (emptyMsg) emptyMsg.classList.add('hidden');
+    }
 
     // 1. Ομαδοποίηση δεδομένων ανά ημέρα
     const recordsByDate = {};
@@ -759,11 +784,13 @@ export const updateCalculations = () => {
 
 export const renderMonthlyTable = (records, wageMap) => {
     monthlyRecordsList.innerHTML = '';
-    if (records.length === 0) {
-        monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500 italic">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</td></tr>';
-    } else {
-        const recordsByDate = {};
-        [...records].reverse().forEach(record => {
+    if (!records || records.length === 0) {
+        monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 italic bg-gray-50 border-b border-gray-200"><span class="text-2xl block mb-2">📂</span>Δεν υπάρχουν αναλυτικά ημερήσια ταμεία για αυτόν τον μήνα.<br><span class="text-xs text-gray-400 mt-1 block">Τα νούμερα προέρχονται από αποθηκευμένη Σύνοψη ή Γρήγορη Εισαγωγή.</span></td></tr>';
+        return;
+    }
+    
+    const recordsByDate = {};
+    [...records].reverse().forEach(record => {
             const dateStr = record.date;
             if (!recordsByDate[dateStr]) {
                 recordsByDate[dateStr] = {
@@ -864,5 +891,4 @@ export const renderMonthlyTable = (records, wageMap) => {
             `;
             monthlyRecordsList.appendChild(tr);
         });
-    }
 };

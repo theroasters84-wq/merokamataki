@@ -72,6 +72,14 @@ export const apiFetchMonthlyReport = async (month, year) => {
         headers: getHeaders()
     });
 };
+
+export const apiDeleteMonthlyReport = async (month, year) => {
+    return await fetch(`/api/monthly-report/${month}/${year}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
+
 export const apiSaveMonthlyReport = async (payload) => {
     return await fetch('/api/monthly-report', {
         method: 'POST',
