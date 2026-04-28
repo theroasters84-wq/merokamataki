@@ -1,8 +1,9 @@
 name: Keep Render Apps Alive
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '*/15 6-18 * * *'
+    - cron: '*/10 6-18 * * *'
 
 jobs:
   ping:
