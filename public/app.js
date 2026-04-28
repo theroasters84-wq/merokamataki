@@ -225,12 +225,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 let actualMonthlyPayroll = 0;
+                const workedByDate = {};
                 records.forEach(record => {
+                    const dateStr = record.date;
+                    if (!workedByDate[dateStr]) workedByDate[dateStr] = new Set();
                     let worked = [];
                     try { worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || []; } catch(e) {}
                     worked.forEach(emp => {
-                        if (typeof emp === 'string') actualMonthlyPayroll += (wageMap[emp] || 0);
-                        else actualMonthlyPayroll += (parseFloat(emp.total_cost) || 0);
+                        let empId = typeof emp === 'string' ? emp : emp.staff_id;
+                        let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
+                        if (!workedByDate[dateStr].has(empId)) {
+                            actualMonthlyPayroll += wage;
+                            workedByDate[dateStr].add(empId);
+                        }
                     });
                 });
 
@@ -271,12 +278,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (name) tempWageMap[name] = rate * fallbackHours;
                     });
                     
+                    const workedByDateForecast = {};
                     records.forEach(record => {
+                        const dateStr = record.date;
+                        if (!workedByDateForecast[dateStr]) workedByDateForecast[dateStr] = new Set();
                         let worked = [];
                         try { worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || []; } catch(e) {}
                         worked.forEach(emp => {
-                            if (typeof emp === 'string') actualPayrollSoFar += (tempWageMap[emp] || 0);
-                            else actualPayrollSoFar += (parseFloat(emp.total_cost) || 0);
+                            let empId = typeof emp === 'string' ? emp : emp.staff_id;
+                            let wage = typeof emp === 'string' ? (tempWageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
+                            if (!workedByDateForecast[dateStr].has(empId)) {
+                                actualPayrollSoFar += wage;
+                                workedByDateForecast[dateStr].add(empId);
+                            }
                         });
                     });
 
@@ -422,16 +436,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         let actualMonthlyPayroll = 0;
+        const workedByDateClosing = {};
         appState.currentMonthlyRecords.forEach(record => {
+            const dateStr = record.date;
+            if (!workedByDateClosing[dateStr]) workedByDateClosing[dateStr] = new Set();
             let worked = [];
             try {
                 worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || [];
             } catch(e) {}
             worked.forEach(emp => {
-                if (typeof emp === 'string') {
-                    actualMonthlyPayroll += (wageMap[emp] || 0); // Υποστήριξη παλιών εγγραφών
-                } else {
-                    actualMonthlyPayroll += (parseFloat(emp.total_cost) || 0); // Νέες εγγραφές
+                let empId = typeof emp === 'string' ? emp : emp.staff_id;
+                let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
+                if (!workedByDateClosing[dateStr].has(empId)) {
+                    actualMonthlyPayroll += wage;
+                    workedByDateClosing[dateStr].add(empId);
                 }
             });
         });

@@ -357,7 +357,7 @@ export const renderMonthlyChart = (records, wageMap) => {
     [...records].reverse().forEach(record => {
         const dateStr = record.date;
         if (!recordsByDate[dateStr]) {
-            recordsByDate[dateStr] = { dateStr: dateStr, totalRev: 0, totalExp: 0, totalWages: 0 };
+            recordsByDate[dateStr] = { dateStr: dateStr, totalRev: 0, totalExp: 0, totalWages: 0, workedNames: new Set() };
         }
         const group = recordsByDate[dateStr];
         group.totalRev += parseFloat(record.daily_revenue) || 0;
@@ -366,8 +366,13 @@ export const renderMonthlyChart = (records, wageMap) => {
         let workedData = [];
         try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
         workedData.forEach(emp => {
-            if (typeof emp === 'string') group.totalWages += (wageMap[emp] || 0);
-            else group.totalWages += (parseFloat(emp.total_cost) || 0);
+            let empId = typeof emp === 'string' ? emp : emp.staff_id;
+            let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
+            
+            if (!group.workedNames.has(empId)) {
+                group.totalWages += wage;
+                group.workedNames.add(empId);
+            }
         });
     });
 
@@ -434,7 +439,6 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
 
     const pad = (num) => String(num).padStart(2, '0');
     const targetDateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-    const savedRecord = appState.currentMonthlyRecords.find(r => r.date && r.date.startsWith(targetDateStr));
     
     const savedRecordsForDay = appState.currentMonthlyRecords.filter(r => r.date && r.date.startsWith(targetDateStr));
     
@@ -516,23 +520,13 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
         updateModalStaffTotal();
     }
 
-    if (savedRecord) {
-        try { appState.currentModalExpenses = typeof savedRecord.detailed_expenses === 'string' ? JSON.parse(savedRecord.detailed_expenses) : (savedRecord.detailed_expenses || []); 
-        } catch(e) { appState.currentModalExpenses = []; }
-        posTotal.value = savedRecord.pos_revenue || '';
-        drawerCash.value = savedRecord.cash_revenue || '';
-        zReceipt.value = savedRecord.daily_revenue || '';
-        if (modalCashierName) modalCashierName.value = savedRecord.cashier_name || '';
-    } else {
-        appState.currentModalExpenses = [];
-        posTotal.value = '';
-        drawerCash.value = '';
-        zReceipt.value = '';
-        if (modalCashierName) modalCashierName.value = '';
-    }
-    
-    updateModalExpensesUI();
-    modalDrawerStatus.classList.add('hidden');
+    appState.currentModalExpenses = [];
+    posTotal.value = '';
+    drawerCash.value = '';
+    zReceipt.value = '';
+    if (modalCashierName) modalCashierName.value = '';
+
+    updateModalExpensesUI();    modalDrawerStatus.classList.add('hidden');
     dayModal.classList.remove('hidden');
 };
 
@@ -821,12 +815,12 @@ export const renderMonthlyTable = (records, wageMap) => {
             let workedData = [];
             try { workedData = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : (record.worked_employees || []); } catch(e) {}
             workedData.forEach(emp => {
-                if (typeof emp === 'string') {
-                    group.totalWages += (wageMap[emp] || 0);
-                    group.workedNames.add(emp);
-                } else {
-                    group.totalWages += (parseFloat(emp.total_cost) || 0);
-                    group.workedNames.add(emp.staff_id);
+                let empId = typeof emp === 'string' ? emp : emp.staff_id;
+                let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
+                
+                if (!group.workedNames.has(empId)) {
+                    group.totalWages += wage;
+                    group.workedNames.add(empId);
                 }
             });
         });
