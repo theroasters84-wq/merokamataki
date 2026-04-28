@@ -1,0 +1,14 @@
+name: Keep Render Apps Alive
+
+on:
+  schedule:
+    - cron: '*/15 6-18 * * *'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Merokamataki
+        run: curl -I -s https://merokamataki.onrender.com/api/keep_alive
+      - name: Ping Olea AI
+        run: curl -I -s https://olea-ai-4vz0.onrender.com/api/keep_alive
