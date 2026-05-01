@@ -1,4 +1,4 @@
-import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiDeleteMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord } from './api.js';
+import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetchMonthlyReport, apiDeleteMonthlyReport, apiSaveMonthlyReport, apiSaveDailyRecord, apiUpdateDailyRecord, apiDeleteDailyRecord, apiGetSettings, apiSetSettings } from './api.js';
 import { initAuth } from './auth.js';
 import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
@@ -11,30 +11,45 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Αρχικοποίηση Πεδίων Ρυθμίσεων ---
-    if (fixedOverheadsInput) fixedOverheadsInput.value = localStorage.getItem('fixedOverheads') || 0;
-    if (ownerInsuranceInput) ownerInsuranceInput.value = localStorage.getItem('ownerInsurance') || 0;
-    if (vatRateInput) vatRateInput.value = localStorage.getItem('vatRate') !== null ? localStorage.getItem('vatRate') : 13;
-
     if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', () => {
+        saveSettingsBtn.addEventListener('click', async () => {
             const overheads = parseFloat(fixedOverheadsInput.value) || 0;
             const insurance = parseFloat(ownerInsuranceInput.value) || 0;
             const vat = parseFloat(vatRateInput.value) || 13;
 
-            localStorage.setItem('fixedOverheads', overheads);
-            localStorage.setItem('ownerInsurance', insurance);
-            localStorage.setItem('vatRate', vat);
+            try {
+                saveSettingsBtn.disabled = true;
+                saveSettingsBtn.textContent = 'Αποθήκευση...';
+                
+                const response = await apiSetSettings({
+                    fixed_overheads: overheads,
+                    owner_insurance: insurance,
+                    vat_rate: vat
+                });
 
-            appState.MONTHLY_FIXED_COSTS = overheads + insurance;
-            appState.AVERAGE_VAT_RATE = vat / 100;
+                if (response.ok) {
+                    appState.MONTHLY_OVERHEADS = overheads;
+                    appState.MONTHLY_OWNER_INSURANCE = insurance;
+                    appState.MONTHLY_FIXED_COSTS = overheads + insurance;
+                    appState.AVERAGE_VAT_RATE = vat / 100;
 
-            alert('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!');
-            updateCalculations();
-            
-            if (!monthlyReportView.classList.contains('hidden')) {
-                fetchReportBtn.click(); // Αναγκαστικό refresh
-            } else {
-                fetchDashboardData();
+                    alert('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!');
+                    updateCalculations();
+                    
+                    if (!monthlyReportView.classList.contains('hidden')) {
+                        fetchReportBtn.click(); // Αναγκαστικό refresh
+                    } else {
+                        fetchDashboardData();
+                    }
+                } else {
+                    alert('Προέκυψε σφάλμα κατά την αποθήκευση των ρυθμίσεων.');
+                }
+            } catch (error) {
+                console.error("Error saving settings:", error);
+                alert('Αδυναμία επικοινωνίας με τον server.');
+            } finally {
+                saveSettingsBtn.disabled = false;
+                saveSettingsBtn.textContent = 'Αποθήκευση Ρυθμίσεων';
             }
         });
     }
@@ -103,6 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
         onAuthSuccess: async () => {
+            try {
+                const settingsRes = await apiGetSettings();
+                if (settingsRes.ok) {
+                    const settings = await settingsRes.json();
+                    if (fixedOverheadsInput) fixedOverheadsInput.value = settings.fixed_overheads || 0;
+                    if (ownerInsuranceInput) ownerInsuranceInput.value = settings.owner_insurance || 0;
+                    if (vatRateInput) vatRateInput.value = settings.vat_rate !== undefined ? settings.vat_rate : 13;
+                    
+                    appState.MONTHLY_OVERHEADS = parseFloat(settings.fixed_overheads) || 0;
+                    appState.MONTHLY_OWNER_INSURANCE = parseFloat(settings.owner_insurance) || 0;
+                    appState.MONTHLY_FIXED_COSTS = appState.MONTHLY_OVERHEADS + appState.MONTHLY_OWNER_INSURANCE;
+                    appState.AVERAGE_VAT_RATE = (parseFloat(settings.vat_rate) || 13) / 100;
+                }
+            } catch (error) {
+                console.error("Error fetching settings:", error);
+            }
+            
             fetchEmployees();
             renderCalendar();
             updateDashExpensesUI();

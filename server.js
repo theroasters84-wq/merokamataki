@@ -300,23 +300,31 @@ app.post('/api/pin/reset', async (req, res) => {
 // --- Τέλος Endpoints Ταυτοποίησης ---
 
 // --- Endpoints Ρυθμίσεων Καταστήματος ---
-app.get('/api/settings/fixed-costs', authenticateToken, async (req, res) => {
+app.get('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT default_fixed_costs FROM users WHERE id = $1', [req.user.user_id]);
-    res.json({ fixed_costs: result.rows.length > 0 ? (result.rows[0].default_fixed_costs || 0) : 0 });
+    const result = await pool.query('SELECT fixed_overheads, owner_insurance, vat_rate FROM users WHERE id = $1', [req.user.user_id]);
+    if (result.rows.length > 0) {
+      res.json({
+        fixed_overheads: result.rows[0].fixed_overheads || 0,
+        owner_insurance: result.rows[0].owner_insurance || 0,
+        vat_rate: result.rows[0].vat_rate || 13
+      });
+    } else {
+      res.json({ fixed_overheads: 0, owner_insurance: 0, vat_rate: 13 });
+    }
   } catch (error) {
-    console.error('Error fetching fixed costs:', error);
+    console.error('Error fetching settings:', error);
     res.status(500).json({ error: 'Server Error' });
   }
 });
 
-app.post('/api/settings/fixed-costs', authenticateToken, async (req, res) => {
+app.post('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const { fixed_costs } = req.body;
-    await pool.query('UPDATE users SET default_fixed_costs = $1 WHERE store_id = $2', [fixed_costs, req.user.storeId]);
+    const { fixed_overheads, owner_insurance, vat_rate } = req.body;
+    await pool.query('UPDATE users SET fixed_overheads = $1, owner_insurance = $2, vat_rate = $3 WHERE store_id = $4', [fixed_overheads, owner_insurance, vat_rate, req.user.storeId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error setting fixed costs:', error);
+    console.error('Error setting settings:', error);
     res.status(500).json({ error: 'Server Error' });
   }
 });
