@@ -282,13 +282,6 @@ export const renderCalendar = () => {
         
         calendarGrid.appendChild(dayDiv);
     }
-
-    setTimeout(() => {
-        const todayCell = calendarGrid.querySelector('.today-cell');
-        if (todayCell) {
-            todayCell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
-    }, 100);
 };
 
 export const updateModalDrawerStatus = () => {
