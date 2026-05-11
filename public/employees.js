@@ -126,7 +126,11 @@ const renderCalendar = () => {
         daysArr.forEach(d => {
             let sHtml = `<div class="time-slots-panel-day hidden grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-1 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">`;
             for (let i = 0; i < 24; i++) {
-                sHtml += `<button type="button" data-hour="${i}" class="time-slot-btn-day text-xs py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50">${String(i).padStart(2,'0')}:00</button>`;
+                const nextHour = i + 1 === 24 ? 0 : i + 1;
+                sHtml += `<button type="button" data-hour="${i}" class="time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50">
+                    <span class="text-[11px] font-semibold leading-none">${String(i).padStart(2,'0')}:00</span>
+                    <span class="text-[8px] opacity-75 mt-0.5 leading-none">έως ${String(nextHour).padStart(2,'0')}:00</span>
+                </button>`;
             }
             sHtml += '</div>';
             allSlotsPanels += sHtml;
@@ -227,14 +231,15 @@ const renderCalendar = () => {
         
         div.querySelectorAll('.time-slot-btn-day').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const isSelected = e.target.classList.contains('bg-primary');
+                const button = e.currentTarget;
+                const isSelected = button.classList.contains('bg-primary');
                 if (isSelected) {
-                    e.target.className = 'time-slot-btn-day text-xs py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
+                    button.className = 'time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
                 } else {
-                    e.target.className = 'time-slot-btn-day text-xs py-1 border rounded transition-colors bg-primary text-white border-primary';
+                    button.className = 'time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-primary text-white border-primary';
                 }
                 
-                const day = e.target.closest('.time-slots-panel-day').dataset.day;
+                const day = button.closest('.time-slots-panel-day').dataset.day;
                 const panel = div.querySelector(`.time-slots-panel-day[data-day="${day}"]`);
                 const selectedCount = panel.querySelectorAll('.time-slot-btn-day.bg-primary').length;
                 
