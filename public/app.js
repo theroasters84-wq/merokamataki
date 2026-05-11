@@ -953,13 +953,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fallbackHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
                     const shiftType = dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning';
 
-                    const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayOfWeek}"]`);
-                    const timeSlots = [];
+                    const panel = row.querySelector(`.time-range-panel-day[data-day="${dayOfWeek}"]`);
+                    let time_from = '';
+                    let time_to = '';
+                    let time_from_2 = '';
+                    let time_to_2 = '';
                     if (panel) {
-                        panel.querySelectorAll('.time-slot-btn-day.bg-primary').forEach(btn => timeSlots.push(parseInt(btn.dataset.hour)));
+                        time_from = panel.querySelector('.time-from-day').value;
+                        time_to = panel.querySelector('.time-to-day').value;
+                        time_from_2 = panel.querySelector('.time-from-day-2').value;
+                        time_to_2 = panel.querySelector('.time-to-day-2').value;
                     }
                     
-                    const hours = timeSlots.length > 0 ? timeSlots.length : fallbackHours;
+                    const hours = fallbackHours;
                     const wage = rate * hours;
                     totalWages += wage;
 
@@ -968,7 +974,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         hours_worked: hours,
                         shift_type: shiftType,
                         total_cost: wage,
-                        time_slots: timeSlots
+                        time_from,
+                        time_to,
+                        time_from_2,
+                        time_to_2,
+                        time_slots: []
                     });
                 }
             }

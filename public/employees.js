@@ -50,15 +50,12 @@ const renderCalendar = () => {
                             wrapper.querySelector('.shift-input-day').value = dayData.shift || 'morning';
                             wrapper.querySelector('.hours-input-day').value = dayData.hours !== undefined ? dayData.hours : 8;
 
-                            const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
-                            if (panel && dayData.time_slots) {
-                                dayData.time_slots.forEach(hour => {
-                                    const btn = panel.querySelector(`.time-slot-btn-day[data-hour="${hour}"]`);
-                                    if (btn) {
-                                        btn.classList.remove('bg-white', 'text-gray-600');
-                                        btn.classList.add('bg-primary', 'text-white', 'border-primary');
-                                    }
-                                });
+                            const panel = row.querySelector(`.time-range-panel-day[data-day="${dayId}"]`);
+                            if (panel) {
+                                if (dayData.time_from) panel.querySelector('.time-from-day').value = dayData.time_from;
+                                if (dayData.time_to) panel.querySelector('.time-to-day').value = dayData.time_to;
+                                if (dayData.time_from_2) panel.querySelector('.time-from-day-2').value = dayData.time_from_2;
+                                if (dayData.time_to_2) panel.querySelector('.time-to-day-2').value = dayData.time_to_2;
                             }
                         }
                     });
@@ -88,12 +85,18 @@ const renderCalendar = () => {
                 if (isActive) {
                     const shift = wrapper.querySelector('.shift-input-day').value;
                     const hours = parseFloat(wrapper.querySelector('.hours-input-day').value) || 0;
-                    const time_slots = [];
-                    const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayId}"]`);
+                    let time_from = '';
+                    let time_to = '';
+                    let time_from_2 = '';
+                    let time_to_2 = '';
+                    const panel = row.querySelector(`.time-range-panel-day[data-day="${dayId}"]`);
                     if (panel) {
-                        panel.querySelectorAll('.time-slot-btn-day.bg-primary').forEach(btn => time_slots.push(parseInt(btn.dataset.hour)));
+                        time_from = panel.querySelector('.time-from-day').value;
+                        time_to = panel.querySelector('.time-to-day').value;
+                        time_from_2 = panel.querySelector('.time-from-day-2').value;
+                        time_to_2 = panel.querySelector('.time-to-day-2').value;
                     }
-                    schedule[dayId] = { shift, hours, time_slots };
+                    schedule[dayId] = { shift, hours, time_from, time_to, time_from_2, time_to_2, time_slots: [] };
                 }
             });
             employees.push({ name, hourly_rate, schedule });
@@ -124,15 +127,30 @@ const renderCalendar = () => {
         let allSlotsPanels = '';
 
         daysArr.forEach(d => {
-            let sHtml = `<div class="time-slots-panel-day hidden grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-1 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">`;
-            for (let i = 0; i < 24; i++) {
-                const nextHour = i + 1 === 24 ? 0 : i + 1;
-                sHtml += `<button type="button" data-hour="${i}" class="time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50">
-                    <span class="text-[11px] font-semibold leading-none">${String(i).padStart(2,'0')}:00</span>
-                    <span class="text-[8px] opacity-75 mt-0.5 leading-none">έως ${String(nextHour).padStart(2,'0')}:00</span>
-                </button>`;
-            }
-            sHtml += '</div>';
+            let sHtml = `
+            <div class="time-range-panel-day hidden flex-col gap-2 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">
+                <div class="flex items-center gap-2 w-full justify-center">
+                    <div class="flex flex-col items-center">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1">Από</label>
+                        <input type="time" class="time-from-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                    </div>
+                    <span class="text-gray-400 font-bold mt-4">-</span>
+                    <div class="flex flex-col items-center">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1">Έως</label>
+                        <input type="time" class="time-to-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                    </div>
+                    <div class="w-px h-6 bg-gray-300 mx-1 mt-4"></div>
+                    <div class="flex flex-col items-center">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1">Από (2)</label>
+                        <input type="time" class="time-from-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                    </div>
+                    <span class="text-gray-400 font-bold mt-4">-</span>
+                    <div class="flex flex-col items-center">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1">Έως (2)</label>
+                        <input type="time" class="time-to-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                    </div>
+                </div>
+            </div>`;
             allSlotsPanels += sHtml;
 
             daysHtml += `
@@ -219,35 +237,71 @@ const renderCalendar = () => {
         div.querySelectorAll('.toggle-slots-btn-day').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const day = e.currentTarget.closest('.day-wrapper').dataset.day;
-                const panel = div.querySelector(`.time-slots-panel-day[data-day="${day}"]`);
+                const panel = div.querySelector(`.time-range-panel-day[data-day="${day}"]`);
                 if (panel) {
                     panel.classList.toggle('hidden');
-                    div.querySelectorAll('.time-slots-panel-day').forEach(p => {
+                    div.querySelectorAll('.time-range-panel-day').forEach(p => {
                         if (p !== panel) p.classList.add('hidden');
                     });
                 }
             });
         });
         
-        div.querySelectorAll('.time-slot-btn-day').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const button = e.currentTarget;
-                const isSelected = button.classList.contains('bg-primary');
-                if (isSelected) {
-                    button.className = 'time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
-                } else {
-                    button.className = 'time-slot-btn-day flex flex-col items-center justify-center py-1 border rounded transition-colors bg-primary text-white border-primary';
+        div.querySelectorAll('.time-from-day, .time-to-day, .time-from-day-2, .time-to-day-2').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const day = e.currentTarget.closest('.time-range-panel-day').dataset.day;
+                const panel = div.querySelector(`.time-range-panel-day[data-day="${day}"]`);
+                const dayWrapper = div.querySelector(`.day-wrapper[data-day="${day}"]`);
+                const shiftSelect = dayWrapper.querySelector('.shift-input-day');
+
+                const from = panel.querySelector('.time-from-day').value;
+                const to = panel.querySelector('.time-to-day').value;
+                const from2 = panel.querySelector('.time-from-day-2').value;
+                const to2 = panel.querySelector('.time-to-day-2').value;
+                
+                let diff1 = 0;
+                let diff2 = 0;
+                let detectedShift = shiftSelect.value;
+
+                if (from) {
+                    const [fromH] = from.split(':').map(Number);
+                    if (fromH >= 5 && fromH < 16) detectedShift = 'morning';
+                    else detectedShift = 'night';
                 }
-                
-                const day = button.closest('.time-slots-panel-day').dataset.day;
-                const panel = div.querySelector(`.time-slots-panel-day[data-day="${day}"]`);
-                const selectedCount = panel.querySelectorAll('.time-slot-btn-day.bg-primary').length;
-                
-                const hoursInputDay = div.querySelector(`.day-wrapper[data-day="${day}"] .hours-input-day`);
-                if (hoursInputDay) {
-                    hoursInputDay.value = selectedCount;
+
+                if (from && to) {
+                    const [fromH, fromM] = from.split(':').map(Number);
+                    const [toH, toM] = to.split(':').map(Number);
+                    
+                    let fromDec = fromH + fromM / 60;
+                    let toDec = toH + toM / 60;
+                    
+                    if (toDec < fromDec) toDec += 24; 
+                    diff1 = toDec - fromDec;
                 }
-                
+
+                if (from2 || to2) {
+                    detectedShift = 'split';
+                }
+
+                if (from2 && to2) {
+                    const [fromH, fromM] = from2.split(':').map(Number);
+                    const [toH, toM] = to2.split(':').map(Number);
+                    
+                    let fromDec = fromH + fromM / 60;
+                    let toDec = toH + toM / 60;
+                    
+                    if (toDec < fromDec) toDec += 24; 
+                    diff2 = toDec - fromDec;
+                }
+
+                shiftSelect.value = detectedShift;
+
+                let diff = diff1 + diff2;
+                if (diff > 0 && dayWrapper) {
+                    const hoursInputDay = dayWrapper.querySelector('.hours-input-day');
+                    if (hoursInputDay) hoursInputDay.value = (Math.round(diff * 100) / 100).toString();
+                }
                 updateCalculations();
                 renderCalendar();
             });

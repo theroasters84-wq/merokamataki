@@ -230,7 +230,10 @@ export const renderCalendar = () => {
                         if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
                         const name = emp.staff_id || 'Άγνωστος';
                         let emoji = emp.shift_type === 'morning' ? '☀️ ' : (emp.shift_type === 'night' ? '🌙 ' : (emp.shift_type === 'split' ? '⚡ ' : ''));
-                        let slotsStr = emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '';
+                        let timeRanges = [];
+                        if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
+                        if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
                         return `<div class="text-[10px] md:text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
@@ -243,15 +246,25 @@ export const renderCalendar = () => {
                 return checkbox && checkbox.checked;
             }).map(row => {
                 const dayWrapper = row.querySelector(`.day-wrapper[data-day="${currentDayOfWeek}"]`);
-                const panel = row.querySelector(`.time-slots-panel-day[data-day="${currentDayOfWeek}"]`);
-                const timeSlots = [];
+                const panel = row.querySelector(`.time-range-panel-day[data-day="${currentDayOfWeek}"]`);
+                let time_from = '';
+                let time_to = '';
+                let time_from_2 = '';
+                let time_to_2 = '';
                 if (panel) {
-                    panel.querySelectorAll('.time-slot-btn-day.bg-primary').forEach(btn => timeSlots.push(parseInt(btn.dataset.hour)));
+                    time_from = panel.querySelector('.time-from-day').value;
+                    time_to = panel.querySelector('.time-to-day').value;
+                    time_from_2 = panel.querySelector('.time-from-day-2').value;
+                    time_to_2 = panel.querySelector('.time-to-day-2').value;
                 }
                 return {
                     name: row.querySelector('.name-input').value.trim(),
                     shift: dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning',
-                    time_slots: timeSlots
+                    time_from,
+                    time_to,
+                    time_from_2,
+                    time_to_2,
+                    time_slots: []
                 };
             }).filter(emp => emp.name !== '');
             
@@ -259,7 +272,10 @@ export const renderCalendar = () => {
                 employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px] opacity-70" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' + 
                     workingEmployees.map(emp => {
                         let emoji = emp.shift === 'morning' ? '☀️ ' : (emp.shift === 'night' ? '🌙 ' : (emp.shift === 'split' ? '⚡ ' : ''));
-                        let slotsStr = emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '';
+                        let timeRanges = [];
+                        if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
+                        if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
                         return `<div class="text-[10px] md:text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
@@ -634,13 +650,7 @@ export const updateCalculations = () => {
             const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
             const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeekForToday}"]`);
             const fallbackHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
-            const panel = row.querySelector(`.time-slots-panel-day[data-day="${dayOfWeekForToday}"]`);
-            let hours = fallbackHours;
-            if (panel) {
-                const timeSlots = panel.querySelectorAll('.time-slot-btn-day.bg-primary');
-                if (timeSlots.length > 0) hours = timeSlots.length;
-            }
-            totalWagesForToday += rate * hours;
+            totalWagesForToday += rate * fallbackHours;
         }
     });
 
