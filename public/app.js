@@ -664,11 +664,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return existing;
             } else {
                 let rate = 0;
+                let hours = 8;
+                let tFrom = '', tTo = '', tFrom2 = '', tTo2 = '', sType = 'morning';
                 const empRow = Array.from(employeeListEl.querySelectorAll('.employee-row')).find(row => row.querySelector('.name-input').value.trim() === name);
-                if (empRow) rate = parseFloat(empRow.querySelector('.rate-input').value) || 0;
-                const wage = rate * 8;
+                if (empRow) {
+                    rate = parseFloat(empRow.querySelector('.rate-input').value) || 0;
+                    const dateObj = new Date(appState.currentEditRecordDate);
+                    const dayOfWeek = dateObj.getDay();
+                    const dayWrapper = empRow.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
+                    if (dayWrapper) {
+                        hours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
+                        sType = dayWrapper.querySelector('.shift-input-day').value;
+                    }
+                    const panel = empRow.querySelector(`.time-range-panel-day[data-day="${dayOfWeek}"]`);
+                    if (panel) {
+                        tFrom = panel.querySelector('.time-from-day').value;
+                        tTo = panel.querySelector('.time-to-day').value;
+                        tFrom2 = panel.querySelector('.time-from-day-2').value;
+                        tTo2 = panel.querySelector('.time-to-day-2').value;
+                    }
+                }
+                const wage = rate * hours;
                 totalWages += wage;
-                return { staff_id: name, hours_worked: 8, shift_type: 'morning', total_cost: 0, time_slots: [] };
+                return { staff_id: name, hours_worked: hours, shift_type: sType, total_cost: wage, time_from: tFrom, time_to: tTo, time_from_2: tFrom2, time_to_2: tTo2, time_slots: [] };
             }
         });
 
@@ -798,6 +816,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const hours = parseFloat(li.querySelector('.modal-emp-hours').value) || 0;
             const shiftType = li.querySelector('.modal-emp-shift').value;
             const totalCost = parseFloat(li.querySelector('.emp-total-cost').textContent.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+            const tFrom = li.dataset.timeFrom || '';
+            const tTo = li.dataset.timeTo || '';
+            const tFrom2 = li.dataset.timeFrom2 || '';
+            const tTo2 = li.dataset.timeTo2 || '';
             
             totalWages += totalCost;
             
@@ -812,6 +834,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     hours_worked: hours,
                     shift_type: shiftType,
                     total_cost: totalCost,
+                    time_from: tFrom,
+                    time_to: tTo,
+                    time_from_2: tFrom2,
+                    time_to_2: tTo2,
                     time_slots: timeSlots
                 });
             }

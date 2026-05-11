@@ -496,15 +496,31 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
 
             let alreadyBadge = hasAlreadyWorked ? '<span class="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded ml-2" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>' : '';
 
+            let timeRanges = [];
+            let tFrom = '', tTo = '', tFrom2 = '', tTo2 = '';
+            const panel = row.querySelector(`.time-range-panel-day[data-day="${dayOfWeek}"]`);
+            if (panel) {
+                tFrom = panel.querySelector('.time-from-day').value;
+                tTo = panel.querySelector('.time-to-day').value;
+                tFrom2 = panel.querySelector('.time-from-day-2').value;
+                tTo2 = panel.querySelector('.time-to-day-2').value;
+                if (tFrom && tTo) timeRanges.push(`${tFrom}-${tTo}`);
+                if (tFrom2 && tTo2) timeRanges.push(`${tFrom2}-${tTo2}`);
+            }
+            let timeBadges = timeRanges.map(r => `<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded ml-1 font-medium shadow-sm whitespace-nowrap">🕒 ${r}</span>`).join('');
+
             const li = document.createElement('li');
             li.className = 'flex flex-col gap-2 py-2 border-b border-gray-100 last:border-0';
             li.dataset.empName = name;
             li.dataset.empRate = rate;
+            li.dataset.timeFrom = tFrom;
+            li.dataset.timeTo = tTo;
+            li.dataset.timeFrom2 = tFrom2;
+            li.dataset.timeTo2 = tTo2;
             li.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <span class="font-medium text-gray-800">${name} <span class="text-xs font-normal text-gray-500">(${formatCurrency(rate)}/ώ)</span></span>
-                    <span class="font-medium text-gray-800">${name} <span class="text-xs font-normal text-gray-500">(${formatCurrency(rate)}/ώ)</span>${alreadyBadge}</span>
-                    <span class="font-bold emp-total-cost text-gray-900">${formatCurrency(wage)}</span>
+                <div class="flex justify-between items-center gap-1">
+                    <span class="font-medium text-gray-800 flex items-center flex-wrap flex-grow">${name} <span class="text-xs font-normal text-gray-500 mx-1">(${formatCurrency(rate)}/ώ)</span>${timeBadges}${alreadyBadge}</span>
+                    <span class="font-bold emp-total-cost text-gray-900 whitespace-nowrap flex-shrink-0">${formatCurrency(wage)}</span>
                 </div>
                 <div class="flex gap-2 items-center">
                     <input type="number" class="modal-emp-hours w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none" value="${hours}" step="0.5" min="0">
