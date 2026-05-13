@@ -129,25 +129,25 @@ const renderCalendar = () => {
         daysArr.forEach(d => {
             let sHtml = `
             <div class="time-range-panel-day hidden flex-col gap-2 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">
-                <div class="flex items-center gap-2 w-full justify-center">
+                <div class="flex items-center gap-2 w-full justify-center flex-wrap">
                     <div class="flex flex-col items-center">
                         <label class="text-[10px] text-gray-500 font-bold mb-1">Από</label>
-                        <input type="time" class="time-from-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                        <input type="time" class="time-from-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
                     </div>
                     <span class="text-gray-400 font-bold mt-4">-</span>
                     <div class="flex flex-col items-center">
                         <label class="text-[10px] text-gray-500 font-bold mb-1">Έως</label>
-                        <input type="time" class="time-to-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                        <input type="time" class="time-to-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
                     </div>
-                    <div class="w-px h-6 bg-gray-300 mx-1 mt-4"></div>
+                    <div class="w-px h-6 bg-gray-300 mx-1 mt-4 hidden sm:block"></div>
                     <div class="flex flex-col items-center">
                         <label class="text-[10px] text-gray-500 font-bold mb-1">Από (2)</label>
-                        <input type="time" class="time-from-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                        <input type="time" class="time-from-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
                     </div>
                     <span class="text-gray-400 font-bold mt-4">-</span>
                     <div class="flex flex-col items-center">
                         <label class="text-[10px] text-gray-500 font-bold mb-1">Έως (2)</label>
-                        <input type="time" class="time-to-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[70px] text-center text-xs font-medium">
+                        <input type="time" class="time-to-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
                     </div>
                 </div>
             </div>`;
