@@ -225,16 +225,16 @@ export const renderCalendar = () => {
             });
             
             if (allWorked.length > 0) {
-                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px]">' + 
+                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px]">' +
                     allWorked.map(emp => {
-                        if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
+                        if (typeof emp === 'string') return `<span class="text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
                         const name = emp.staff_id || 'Άγνωστος';
                         let emoji = emp.shift_type === 'morning' ? '☀️ ' : (emp.shift_type === 'night' ? '🌙 ' : (emp.shift_type === 'split' ? '⚡ ' : ''));
                         let timeRanges = [];
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
-                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-[10px] md:text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
+                        return `<div class="text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
             }
@@ -269,14 +269,14 @@ export const renderCalendar = () => {
             }).filter(emp => emp.name !== '');
             
             if (workingEmployees.length > 0) {
-                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px] opacity-70" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' + 
+                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px] opacity-70" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' +
                     workingEmployees.map(emp => {
                         let emoji = emp.shift === 'morning' ? '☀️ ' : (emp.shift === 'night' ? '🌙 ' : (emp.shift === 'split' ? '⚡ ' : ''));
                         let timeRanges = [];
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
-                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-[10px] md:text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
+                        return `<div class="text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
             }
