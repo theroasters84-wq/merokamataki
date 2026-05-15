@@ -308,8 +308,14 @@ export const updateModalDrawerStatus = () => {
     
     let totalWages = 0;
     modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
+        const activeCb = li.querySelector('.modal-emp-active');
+        if (activeCb && !activeCb.checked) return;
+
         const cost = parseFloat(li.querySelector('.emp-total-cost').textContent.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
-        totalWages += cost;
+        const paidCb = li.querySelector('.modal-emp-paid-from-drawer');
+        if (!paidCb || paidCb.checked) {
+            totalWages += cost;
+        }
     });
     
     const pos = parseFloat(posTotal.value) || 0;
@@ -464,9 +470,13 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
     const updateModalStaffTotal = () => {
         let currentTotal = 0;
         modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
-            const rate = parseFloat(li.dataset.empRate) || 0;
-            const hours = parseFloat(li.querySelector('.modal-emp-hours').value) || 0;
-            const cost = rate * hours;
+            const activeCb = li.querySelector('.modal-emp-active');
+            let cost = 0;
+            if (activeCb && activeCb.checked) {
+                const rate = parseFloat(li.dataset.empRate) || 0;
+                const hours = parseFloat(li.querySelector('.modal-emp-hours').value) || 0;
+                cost = rate * hours;
+            }
             li.querySelector('.emp-total-cost').textContent = formatCurrency(cost);
             currentTotal += cost;
         });
@@ -510,7 +520,7 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             let timeBadges = timeRanges.map(r => `<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded ml-1 font-medium shadow-sm whitespace-nowrap">🕒 ${r}</span>`).join('');
 
             const li = document.createElement('li');
-            li.className = 'flex flex-col gap-2 py-2 border-b border-gray-100 last:border-0';
+            li.className = 'flex flex-col gap-2 py-2 border-b border-gray-100 last:border-0 transition-opacity';
             li.dataset.empName = name;
             li.dataset.empRate = rate;
             li.dataset.timeFrom = tFrom;
@@ -519,18 +529,61 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             li.dataset.timeTo2 = tTo2;
             li.innerHTML = `
                 <div class="flex justify-between items-center gap-1">
-                    <span class="font-medium text-gray-800 flex items-center flex-wrap flex-grow">${name} <span class="text-xs font-normal text-gray-500 mx-1">(${formatCurrency(rate)}/ώ)</span>${timeBadges}${alreadyBadge}</span>
+                    <label class="flex items-center gap-2 cursor-pointer flex-grow">
+                        <input type="checkbox" class="modal-emp-active w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" ${hours > 0 ? 'checked' : ''}>
+                        <span class="font-medium text-gray-800 flex items-center flex-wrap">${name} <span class="text-xs font-normal text-gray-500 mx-1">(${formatCurrency(rate)}/ώ)</span>${timeBadges}${alreadyBadge}</span>
+                    </label>
                     <span class="font-bold emp-total-cost text-gray-900 whitespace-nowrap flex-shrink-0">${formatCurrency(wage)}</span>
                 </div>
-                <div class="flex gap-2 items-center">
-                    <input type="number" class="modal-emp-hours w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none" value="${hours}" step="0.5" min="0">
-                    <select class="modal-emp-shift flex-grow px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none bg-white">
+                <div class="flex gap-2 items-center pl-6">
+                    <input type="number" class="modal-emp-hours w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none ${hours > 0 ? '' : 'opacity-50'}" value="${hours}" step="0.5" min="0" ${hours > 0 ? '' : 'disabled'}>
+                    <select class="modal-emp-shift flex-grow px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none bg-white ${hours > 0 ? '' : 'opacity-50'}" ${hours > 0 ? '' : 'disabled'}>
                         <option value="morning" ${defaultShift === 'morning' ? 'selected' : ''}>☀️ Πρωί</option>
                         <option value="night" ${defaultShift === 'night' ? 'selected' : ''}>🌙 Βράδυ</option>
                         <option value="split" ${defaultShift === 'split' ? 'selected' : ''}>⚡ Σπαστό</option>
                     </select>
+                    <label class="flex items-center gap-1 cursor-pointer whitespace-nowrap ${hours > 0 ? '' : 'opacity-50'} modal-emp-paid-drawer-label">
+                        <input type="checkbox" class="modal-emp-paid-from-drawer text-primary rounded border-gray-300 focus:ring-primary" checked title="Πληρώθηκε από το σημερινό ταμείο" ${hours > 0 ? '' : 'disabled'}>
+                        <span class="text-[10px] text-gray-500 leading-none">Από Ταμείο</span>
+                    </label>
                 </div>`;
-            li.querySelector('.modal-emp-hours').addEventListener('input', updateModalStaffTotal);
+            
+            const activeCb = li.querySelector('.modal-emp-active');
+            const hoursInput = li.querySelector('.modal-emp-hours');
+            const shiftSelect = li.querySelector('.modal-emp-shift');
+            const paidCb = li.querySelector('.modal-emp-paid-from-drawer');
+            const paidLabel = li.querySelector('.modal-emp-paid-drawer-label');
+
+            if (hours === 0) li.classList.add('opacity-60');
+
+            activeCb.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (parseFloat(hoursInput.value) === 0 && !hasAlreadyWorked) {
+                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
+                        hoursInput.value = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 8;
+                    }
+                    hoursInput.disabled = false;
+                    shiftSelect.disabled = false;
+                    paidCb.disabled = false;
+                    hoursInput.classList.remove('opacity-50');
+                    shiftSelect.classList.remove('opacity-50');
+                    paidLabel.classList.remove('opacity-50');
+                    li.classList.remove('opacity-60');
+                } else {
+                    hoursInput.value = 0;
+                    hoursInput.disabled = true;
+                    shiftSelect.disabled = true;
+                    paidCb.disabled = true;
+                    hoursInput.classList.add('opacity-50');
+                    shiftSelect.classList.add('opacity-50');
+                    paidLabel.classList.add('opacity-50');
+                    li.classList.add('opacity-60');
+                }
+                updateModalStaffTotal();
+            });
+
+            hoursInput.addEventListener('input', updateModalStaffTotal);
+            paidCb.addEventListener('change', updateModalDrawerStatus);
             modalShiftsList.appendChild(li);
         }
     });
@@ -808,7 +861,8 @@ export const renderMonthlyTable = (records, wageMap) => {
             if (!recordsByDate[dateStr]) {
                 recordsByDate[dateStr] = {
                     dateStr: dateStr, records: [], totalRev: 0, totalPos: 0, totalCash: 0, totalExp: 0,
-                    totalAgatho: 0, totalYlika: 0, totalLogariasmos: 0, totalWages: 0, workedNames: new Set()
+                    totalAgatho: 0, totalYlika: 0, totalLogariasmos: 0, totalWages: 0, workedNames: new Set(),
+                    totalExpOut: 0, totalWagesOut: 0
                 };
             }
             const group = recordsByDate[dateStr];
@@ -825,6 +879,8 @@ export const renderMonthlyTable = (records, wageMap) => {
                     if (exp.category === 'agatho' || exp.category === 'materials') group.totalAgatho += parseFloat(exp.amount) || 0;
                     else if (exp.category === 'ylika') group.totalYlika += parseFloat(exp.amount) || 0;
                     else group.totalLogariasmos += parseFloat(exp.amount) || 0;
+                    
+                    if (exp.paidFromDrawer === false) group.totalExpOut += parseFloat(exp.amount) || 0;
                 });
             } else {
                 const fc = parseFloat(record.food_cost_percentage) || 0;
@@ -840,6 +896,8 @@ export const renderMonthlyTable = (records, wageMap) => {
                 if (!group.workedNames.has(empId)) {
                     group.totalWages += wage;
                     group.workedNames.add(empId);
+                    
+                    if (emp.paid_from_drawer === false) group.totalWagesOut += wage;
                 }
             });
         });
@@ -860,6 +918,9 @@ export const renderMonthlyTable = (records, wageMap) => {
             let wagesBreakdown = workedArray.length > 0 
                 ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedArray.join('\\n👤 ')}')">${workedArray.length > 2 ? workedArray.slice(0,2).join(', ') + '...' : workedArray.join(', ')}</span>`
                 : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
+                
+            let expOutBadge = group.totalExpOut > 0 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 mt-1 inline-block shadow-sm" title="Πληρώθηκαν εκτός ταμείου">🏦 Εκτός: ${formatCurrency(group.totalExpOut)}</span>` : '';
+            let wagesOutBadge = group.totalWagesOut > 0 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 mt-1 inline-block shadow-sm" title="Πληρώθηκαν εκτός ταμείου">🏦 Εκτός: ${formatCurrency(group.totalWagesOut)}</span>` : '';
 
             let shiftDetailsAlert = `Αναλυτικά Ταμεία (${dateFormatted}):\\n\\n`;
             group.records.forEach((rec, idx) => {
@@ -894,10 +955,10 @@ export const renderMonthlyTable = (records, wageMap) => {
                     <br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Τζίρου:\\n\\n💳 POS: ${formatCurrency(group.totalPos)}\\n💵 Μετρητά: ${formatCurrency(group.totalCash)}')">POS: ${formatCurrency(group.totalPos)} | Μετρ: ${formatCurrency(group.totalCash)}</span>
                 </td>
                 <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(group.totalExp)}</span>${expBreakdown}
+                    <span class="font-medium">${formatCurrency(group.totalExp)}</span>${expBreakdown}${expOutBadge}
                 </td>
                 <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(group.totalWages)}</span>${wagesBreakdown}
+                    <span class="font-medium">${formatCurrency(group.totalWages)}</span>${wagesBreakdown}${wagesOutBadge}
                 </td>
                 <td class="px-6 py-3 text-sm font-semibold align-top ${fcColor}">${fcPercentage.toFixed(1)}%</td>
                 <td class="px-4 py-2 text-sm text-center align-top">${actionsHtml}</td>

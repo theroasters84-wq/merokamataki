@@ -669,6 +669,28 @@
         </form>
     </div>
 
+    <!-- Ενημερωτικό Μήνυμα (Νέα Δυνατότητα - Μεροκάματα) -->
+    <div id="wageNoticeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[80]">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 transform transition-all relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-primary"></div>
+            <div class="flex justify-between items-center mb-4 mt-2 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2"><span>📢</span> Νέα Δυνατότητα</h3>
+                <button id="closeWageNoticeBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="space-y-4 text-gray-700 text-sm leading-relaxed">
+                <p>Πλέον μπορείτε να δηλώνετε αν ένα μεροκάματο πληρώθηκε <b>εκτός του σημερινού ταμείου</b>!</p>
+                <p>Κατά το κλείσιμο της βάρδιας (ή την επεξεργασία), θα δείτε την επιλογή <b>"Από Ταμείο"</b> δίπλα στο ωράριο του κάθε εργαζόμενου. Αν την ξε-τικάρετε:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Το ποσό <b>ΔΕΝ</b> θα προστεθεί στον αναμενόμενο σημερινό τζίρο (ώστε να βγαίνουν σωστά τα μετρητά του συρταριού).</li>
+                    <li>Το μεροκάματο θα συνεχίσει να αφαιρείται κανονικά από το συνολικό Καθαρό Κέρδος του μήνα.</li>
+                </ul>
+            </div>
+            <div class="mt-6 pt-4 border-t border-gray-200 text-center">
+                <button id="ackWageNoticeBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg transition duration-200 shadow-sm text-sm">Το κατάλαβα</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Help Modal (Οδηγίες Χρήσης) -->
     <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70]">
         <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl mx-4 transform transition-all max-h-[90vh] overflow-y-auto">

@@ -140,6 +140,20 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDashExpensesUI();
             updateCalculations();
             fetchDashboardData();
+
+            // --- Ενημερωτικό Μήνυμα 48 ωρών (Λήγει 17/5/2026) ---
+            const noticeExp = new Date('2026-05-17T23:59:59').getTime();
+            if (Date.now() < noticeExp && localStorage.getItem('seenWageNotice_v1') !== 'true') {
+                const wageModal = document.getElementById('wageNoticeModal');
+                if (wageModal) wageModal.classList.remove('hidden');
+                
+                const closeNotice = () => {
+                    if (wageModal) wageModal.classList.add('hidden');
+                    localStorage.setItem('seenWageNotice_v1', 'true');
+                };
+                document.getElementById('closeWageNoticeBtn')?.addEventListener('click', closeNotice);
+                document.getElementById('ackWageNoticeBtn')?.addEventListener('click', closeNotice);
+            }
         }
     });
 
@@ -584,15 +598,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!name) return; // Παράλειψη κενών
             
             addedEmployees++;
-            const isChecked = workedEmployees.some(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name) ? 'checked' : '';
+            const empData = workedEmployees.find(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name);
+            const isChecked = empData ? 'checked' : '';
+            const isPaidFromDrawer = empData && empData.paid_from_drawer !== false;
             
-            const label = document.createElement('label');
-            label.className = 'flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-100 rounded transition-colors';
-            label.innerHTML = `
-                <input type="checkbox" class="edit-employee-checkbox w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" value="${name}" ${isChecked}>
-                <span class="text-sm text-gray-700">${name}</span>
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between p-1 hover:bg-gray-100 rounded transition-colors';
+            div.innerHTML = `
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="edit-employee-checkbox w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" value="${name}" ${isChecked}>
+                    <span class="text-sm text-gray-700">${name}</span>
+                </label>
+                <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                    <input type="checkbox" class="edit-employee-paid-drawer w-3 h-3 text-primary rounded" ${isPaidFromDrawer ? 'checked' : ''}>
+                    Από Ταμείο
+                </label>
             `;
-            editModalEmployeesList.appendChild(label);
+            editModalEmployeesList.appendChild(div);
         });
 
         if (addedEmployees === 0) {
@@ -658,10 +680,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const checkboxes = editModalEmployeesList.querySelectorAll('.edit-employee-checkbox:checked');
         const workedEmployees = Array.from(checkboxes).map(cb => {
             const name = cb.value;
+            const container = cb.closest('.flex.items-center.justify-between');
+            const paidCb = container.querySelector('.edit-employee-paid-drawer');
+            const isPaidFromDrawer = paidCb ? paidCb.checked : true;
+
             const existing = (appState.currentEditRecordWorkedEmployees || []).find(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name);
+            let resultObj;
             if (existing && typeof existing === 'object') {
-                totalWages += parseFloat(existing.total_cost) || 0;
-                return existing;
+                resultObj = { ...existing, paid_from_drawer: isPaidFromDrawer };
             } else {
                 let rate = 0;
                 let hours = 8;
@@ -685,9 +711,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 const wage = rate * hours;
-                totalWages += wage;
-                return { staff_id: name, hours_worked: hours, shift_type: sType, total_cost: wage, time_from: tFrom, time_to: tTo, time_from_2: tFrom2, time_to_2: tTo2, time_slots: [] };
+                resultObj = { staff_id: name, hours_worked: hours, shift_type: sType, total_cost: wage, time_from: tFrom, time_to: tTo, time_from_2: tFrom2, time_to_2: tTo2, time_slots: [], paid_from_drawer: isPaidFromDrawer };
             }
+            
+            if (isPaidFromDrawer) {
+                totalWages += parseFloat(resultObj.total_cost) || 0;
+            }
+            return resultObj;
         });
 
         const newRevenue = posRev + cashRev + drawerExpenses + totalWages;
@@ -812,16 +842,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalWages = 0;
         
         modalShiftsList.querySelectorAll('li[data-emp-name]').forEach(li => {
+            const activeCb = li.querySelector('.modal-emp-active');
+            if (activeCb && !activeCb.checked) return;
+
             const name = li.dataset.empName;
             const hours = parseFloat(li.querySelector('.modal-emp-hours').value) || 0;
             const shiftType = li.querySelector('.modal-emp-shift').value;
             const totalCost = parseFloat(li.querySelector('.emp-total-cost').textContent.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+            const paidCb = li.querySelector('.modal-emp-paid-from-drawer');
+            const isPaidFromDrawer = paidCb ? paidCb.checked : true;
             const tFrom = li.dataset.timeFrom || '';
             const tTo = li.dataset.timeTo || '';
             const tFrom2 = li.dataset.timeFrom2 || '';
             const tTo2 = li.dataset.timeTo2 || '';
             
-            totalWages += totalCost;
+            if (isPaidFromDrawer) {
+                totalWages += totalCost;
+            }
             
             const timeSlots = [];
             li.querySelectorAll('.time-slot-btn.bg-primary').forEach(btn => {
@@ -838,7 +875,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     time_to: tTo,
                     time_from_2: tFrom2,
                     time_to_2: tTo2,
-                    time_slots: timeSlots
+                    time_slots: timeSlots,
+                    paid_from_drawer: isPaidFromDrawer
                 });
             }
         });
@@ -1004,7 +1042,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         time_to,
                         time_from_2,
                         time_to_2,
-                        time_slots: []
+                        time_slots: [],
+                        paid_from_drawer: true
                     });
                 }
             }
