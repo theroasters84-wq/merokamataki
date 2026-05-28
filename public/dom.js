@@ -63,6 +63,7 @@ export const reportMonthDisplay = document.getElementById('reportMonthDisplay');
 export const reportTotalRevenue = document.getElementById('reportTotalRevenue');
 export const reportTotalExpenses = document.getElementById('reportTotalExpenses');
 export const reportAverageFoodCost = document.getElementById('reportAverageFoodCost');
+export const reportAverageDailyRevenue = document.getElementById('reportAverageDailyRevenue');
 export const reportFixedCosts = document.getElementById('reportFixedCosts');
 export const reportNetProfit = document.getElementById('reportNetProfit');
 export const fetchReportBtn = document.getElementById('fetchReportBtn');
