@@ -547,13 +547,94 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
                         <input type="checkbox" class="modal-emp-paid-from-drawer text-primary rounded border-gray-300 focus:ring-primary" checked title="Πληρώθηκε από το σημερινό ταμείο" ${hours > 0 ? '' : 'disabled'}>
                         <span class="text-[10px] text-gray-500 leading-none">Από Ταμείο</span>
                     </label>
-                </div>`;
+                </div>
+                <details class="pl-6 mt-2 group" open>
+                    <summary class="text-xs text-blue-600 cursor-pointer group-open:mb-2 select-none">Επεξεργασία Ωραρίου</summary>
+                    <div class="flex items-center gap-2 w-full justify-start flex-wrap bg-gray-100 p-2 rounded-md border border-gray-200">
+                        <div class="flex flex-col items-center">
+                            <label class="text-[10px] text-gray-500 font-bold mb-1">Από</label>
+                            <input type="time" class="modal-emp-time-from p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tFrom}">
+                        </div>
+                        <span class="text-gray-400 font-bold mt-3">-</span>
+                        <div class="flex flex-col items-center">
+                            <label class="text-[10px] text-gray-500 font-bold mb-1">Έως</label>
+                            <input type="time" class="modal-emp-time-to p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tTo}">
+                        </div>
+                        <div class="w-px h-6 bg-gray-300 mx-1 mt-3 hidden sm:block"></div>
+                        <div class="flex flex-col items-center">
+                            <label class="text-[10px] text-gray-500 font-bold mb-1">Από (2)</label>
+                            <input type="time" class="modal-emp-time-from-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tFrom2}">
+                        </div>
+                        <span class="text-gray-400 font-bold mt-3">-</span>
+                        <div class="flex flex-col items-center">
+                            <label class="text-[10px] text-gray-500 font-bold mb-1">Έως (2)</label>
+                            <input type="time" class="modal-emp-time-to-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tTo2}">
+                        </div>
+                    </div>
+                </details>
+                `;
             
             const activeCb = li.querySelector('.modal-emp-active');
             const hoursInput = li.querySelector('.modal-emp-hours');
             const shiftSelect = li.querySelector('.modal-emp-shift');
             const paidCb = li.querySelector('.modal-emp-paid-from-drawer');
             const paidLabel = li.querySelector('.modal-emp-paid-drawer-label');
+
+            // Time inputs
+            const timeFromInput = li.querySelector('.modal-emp-time-from');
+            const timeToInput = li.querySelector('.modal-emp-time-to');
+            const timeFrom2Input = li.querySelector('.modal-emp-time-from-2');
+            const timeTo2Input = li.querySelector('.modal-emp-time-to-2');
+
+            const handleTimeInputChange = () => {
+                const from = timeFromInput.value;
+                const to = timeToInput.value;
+                const from2 = timeFrom2Input.value;
+                const to2 = timeTo2Input.value;
+                
+                let diff1 = 0;
+                let diff2 = 0;
+                let detectedShift = shiftSelect.value;
+
+                if (from) {
+                    const [fromH] = from.split(':').map(Number);
+                    if (fromH >= 5 && fromH < 16) detectedShift = 'morning';
+                    else detectedShift = 'night';
+                }
+
+                if (from && to) {
+                    const [fromH, fromM] = from.split(':').map(Number);
+                    const [toH, toM] = to.split(':').map(Number);
+                    let fromDec = fromH + fromM / 60;
+                    let toDec = toH + toM / 60;
+                    if (toDec < fromDec) toDec += 24; 
+                    diff1 = toDec - fromDec;
+                }
+
+                if (from2 || to2) {
+                    detectedShift = 'split';
+                }
+
+                if (from2 && to2) {
+                    const [fromH, fromM] = from2.split(':').map(Number);
+                    const [toH, toM] = to2.split(':').map(Number);
+                    let fromDec = fromH + fromM / 60;
+                    let toDec = toH + toM / 60;
+                    if (toDec < fromDec) toDec += 24; 
+                    diff2 = toDec - fromDec;
+                }
+
+                shiftSelect.value = detectedShift;
+                const totalHours = diff1 + diff2;
+                if (totalHours > 0) {
+                    hoursInput.value = (Math.round(totalHours * 100) / 100).toString();
+                }
+                updateModalStaffTotal();
+            };
+
+            [timeFromInput, timeToInput, timeFrom2Input, timeTo2Input].forEach(input => {
+                input.addEventListener('input', handleTimeInputChange);
+            });
 
             if (hours === 0) li.classList.add('opacity-60');
 
