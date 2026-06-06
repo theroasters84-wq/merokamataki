@@ -51,6 +51,11 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Endpoint για τον περιοδικό έλεγχο του token από το frontend
+app.get('/api/check-token', authenticateToken, (req, res) => {
+  res.status(200).json({ success: true, message: 'Token is valid.' });
+});
+
 // --- Endpoints Ταυτοποίησης (Auth) ---
 
 app.post('/api/register', async (req, res) => {

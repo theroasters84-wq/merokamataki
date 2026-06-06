@@ -124,3 +124,16 @@ export const apiSetSettings = async (settings) => {
         body: JSON.stringify(settings)
     });
 };
+
+export const apiCheckToken = async () => {
+    try {
+        const response = await fetch('/api/check-token', {
+            headers: getHeaders()
+        });
+        return response.ok;
+    } catch (error) {
+        // Network error, etc.
+        console.error('Token check failed:', error);
+        return false;
+    }
+};

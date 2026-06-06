@@ -1,4 +1,4 @@
-import { getToken, apiLogin, apiRegister, apiSetPin, apiVerifyPin, apiForgotPin } from './api.js';
+import { getToken, apiLogin, apiRegister, apiSetPin, apiVerifyPin, apiForgotPin, apiCheckToken } from './api.js';
 
 export function initAuth({ onAuthSuccess }) {
     const loginContainer = document.getElementById('loginContainer');
@@ -28,6 +28,8 @@ export function initAuth({ onAuthSuccess }) {
     const verifyPinBtn = document.getElementById('verifyPinBtn');
     const closeVerifyPinBtn = document.getElementById('closeVerifyPinBtn');
     const forgotPinBtn = document.getElementById('forgotPinBtn');
+
+    let sessionCheckInterval = null;
 
     const enableAdminMode = () => {
         const adminElements = document.querySelectorAll('.admin-only');
@@ -80,10 +82,12 @@ export function initAuth({ onAuthSuccess }) {
             }
 
             if (onAuthSuccess) onAuthSuccess();
+            startSessionCheck(); // Έναρξη περιοδικού ελέγχου
         } else {
             loginContainer.classList.remove('hidden');
             appContainer.classList.add('hidden');
             disableAdminMode();
+            stopSessionCheck(); // Σταμάτημα ελέγχου αν δεν υπάρχει token
         }
     };
 
@@ -177,6 +181,7 @@ export function initAuth({ onAuthSuccess }) {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('isAdmin');
+        stopSessionCheck();
         window.location.reload(); // Επιστροφή στην οθόνη login
     };
 
@@ -280,6 +285,27 @@ export function initAuth({ onAuthSuccess }) {
             }
         });
     }
+
+    // --- Περιοδικός Έλεγχος Συνεδρίας ---
+    const startSessionCheck = () => {
+        // Καθαρίζουμε τυχόν προηγούμενο interval για να μην έχουμε πολλαπλούς ελέγχους
+        if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+
+        // Έλεγχος κάθε 15 λεπτά
+        sessionCheckInterval = setInterval(async () => {
+            const token = getToken();
+            if (!token) {
+                logout(); // Αν για κάποιο λόγο το token διαγραφεί, κάνουμε logout
+                return;
+            }
+            const isValid = await apiCheckToken();
+            if (!isValid) {
+                logout();
+            }
+        }, 15 * 60 * 1000); // 15 λεπτά
+    };
+
+    const stopSessionCheck = () => clearInterval(sessionCheckInterval);
 
     return { checkAuth, logout };
 }
