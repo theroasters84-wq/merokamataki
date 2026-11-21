@@ -1,5 +1,5 @@
 import { appState } from './state.js';
-import { formatCurrency, formatTimeSlots } from './utils.js';
+import { formatCurrency, formatTimeSlots, showDetailsModal } from './utils.js';
 
 // --- Auth DOM Στοιχεία ---
 export const installAppBtn = document.getElementById('installAppBtn');
@@ -73,6 +73,7 @@ export const closeMonthOptions = document.getElementById('closeMonthOptions');
 export const closeMonthDesc = document.getElementById('closeMonthDesc');
 
 export const monthlyRecordsList = document.getElementById('monthlyRecordsList');
+export const monthlyMobileCards = document.getElementById('monthlyMobileCards');
 export const clearDataCheckbox = document.getElementById('clearDataCheckbox');
 
 export const editRecordModal = document.getElementById('editRecordModal');
@@ -197,17 +198,25 @@ export const renderCalendar = () => {
 
     for (let i = 0; i < emptyDays; i++) {
         const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'bg-gray-50 rounded-lg p-2 min-h-[80px] border border-gray-100 opacity-50';
+        emptyDiv.className = 'bg-slate-50/70 rounded-xl p-1 sm:p-2 min-h-[64px] sm:min-h-[88px] border border-slate-100 opacity-50';
         calendarGrid.appendChild(emptyDiv);
     }
 
+    const now = new Date();
+    const isCurrentMonthYear = now.getFullYear() === year && now.getMonth() === month;
+
     for (let day = 1; day <= daysInMonth; day++) {
         const dayDiv = document.createElement('div');
-        dayDiv.className = 'bg-white rounded-lg p-2 min-h-[80px] border border-gray-200 hover:border-primary hover:shadow-md transition-all cursor-pointer flex flex-col justify-start overflow-hidden group';
+        dayDiv.className = 'bg-white rounded-xl p-1 sm:p-2 min-h-[64px] sm:min-h-[88px] border border-slate-200/80 hover:border-primary hover:shadow-md active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-between md:justify-start overflow-hidden group';
         
+        const isToday = isCurrentMonthYear && day === now.getDate();
         const selectedDate = new Date(recordDateEl.value || new Date());
-        if (day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
+        const isSelected = day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear();
+
+        if (isSelected) {
             dayDiv.classList.add('ring-2', 'ring-primary', 'bg-blue-50/30', 'today-cell');
+        } else if (isToday) {
+            dayDiv.classList.add('ring-1', 'ring-blue-400/70', 'bg-blue-50/10');
         }
 
         const targetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -217,16 +226,20 @@ export const renderCalendar = () => {
         });
 
         let employeesHtml = '';
+        let mobileIndicatorHtml = '';
+
         if (savedRecords.length > 0) {
             let allWorked = [];
+            let dayTotalRev = 0;
             savedRecords.forEach(savedRecord => {
+                dayTotalRev += parseFloat(savedRecord.daily_revenue) || 0;
                 let worked = [];
                 try { worked = typeof savedRecord.worked_employees === 'string' ? JSON.parse(savedRecord.worked_employees) : (savedRecord.worked_employees || []); } catch(e){}
                 allWorked = allWorked.concat(worked);
             });
             
             if (allWorked.length > 0) {
-                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px]">' +
+                employeesHtml = '<div class="hidden md:flex mt-1 flex-col gap-1">' +
                     allWorked.map(emp => {
                         if (typeof emp === 'string') return `<span class="text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
                         const name = emp.staff_id || 'Άγνωστος';
@@ -235,10 +248,21 @@ export const renderCalendar = () => {
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
                         let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-xs bg-green-50 text-green-800 rounded px-1 py-0.5 border border-green-200 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
+                        return `<div class="text-xs bg-emerald-50 text-emerald-800 rounded-md px-1.5 py-0.5 border border-emerald-200/80 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
+            } else {
+                employeesHtml = `<div class="hidden md:flex mt-1"><span class="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-md px-1.5 py-0.5 font-semibold">✓ Ταμείο ΟΚ</span></div>`;
             }
+
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            const compactRev = dayTotalRev > 0 ? `<span class="admin-only ${isAdmin ? '' : 'hidden'} ml-0.5">${Math.round(dayTotalRev)}€</span>` : '';
+            mobileIndicatorHtml = `
+                <div class="md:hidden mt-auto pt-1 flex flex-col items-center gap-0.5 w-full">
+                    <span class="w-full text-center text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-300/70 rounded-md py-0.5 px-0.5 leading-none truncate tabular-nums">✓${compactRev}</span>
+                    ${allWorked.length > 0 ? `<span class="text-[9px] font-semibold text-slate-500 leading-none">${allWorked.length}👤</span>` : ''}
+                </div>
+            `;
         } else {
             const currentDayOfWeek = new Date(year, month, day).getDay();
             const employeeRows = Array.from(employeeListEl.querySelectorAll('.employee-row'));
@@ -270,22 +294,36 @@ export const renderCalendar = () => {
             }).filter(emp => emp.name !== '');
             
             if (workingEmployees.length > 0) {
-                employeesHtml = '<div class="mt-1 flex flex-col gap-1 overflow-y-auto max-h-[100px] opacity-70" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' +
+                employeesHtml = '<div class="hidden md:flex mt-1 flex-col gap-1 opacity-75" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' +
                     workingEmployees.map(emp => {
                         let emoji = emp.shift === 'morning' ? '☀️ ' : (emp.shift === 'night' ? '🌙 ' : (emp.shift === 'split' ? '⚡ ' : ''));
                         let timeRanges = [];
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
                         let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-xs bg-gray-50 text-gray-600 rounded px-1 py-0.5 border border-dashed border-gray-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
+                        return `<div class="text-xs bg-slate-50 text-slate-600 rounded-md px-1.5 py-0.5 border border-dashed border-slate-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
+
+                mobileIndicatorHtml = `
+                    <div class="md:hidden mt-auto pt-1 flex items-center justify-center w-full">
+                        <span class="text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/80 rounded-full px-1.5 py-0.5 leading-none tabular-nums">${workingEmployees.length}👤</span>
+                    </div>
+                `;
             }
         }
 
+        const dayBadgeClass = isToday
+            ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-sm'
+            : 'text-xs sm:text-sm font-bold text-slate-700 group-hover:text-primary';
+
         dayDiv.innerHTML = `
-            <span class="text-sm font-bold text-gray-700 group-hover:text-primary">${day}</span>
+            <div class="flex items-center justify-between">
+                <span class="${dayBadgeClass} tabular-nums">${day}</span>
+                ${savedRecords.length > 0 ? '<span class="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-500" title="Καταχωρημένο Ταμείο"></span>' : ''}
+            </div>
             ${employeesHtml}
+            ${mobileIndicatorHtml}
         `;
         
         dayDiv.addEventListener('click', () => {
@@ -327,16 +365,24 @@ export const updateModalDrawerStatus = () => {
         const z = parseFloat(zReceipt.value) || 0;
         const diff = actualTotalRevenue - z;
         
-        modalDrawerStatus.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-orange-100', 'text-orange-800');
+        modalDrawerStatus.classList.remove(
+            'hidden',
+            'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-orange-100', 'text-orange-800',
+            'bg-emerald-50', 'text-emerald-800', 'border', 'border-emerald-300',
+            'bg-rose-50', 'text-rose-800', 'border-rose-300',
+            'bg-amber-50', 'text-amber-800', 'border-amber-300',
+            'shadow-sm', 'tabular-nums'
+        );
+        modalDrawerStatus.classList.add('border', 'shadow-sm', 'tabular-nums');
         if (diff === 0) {
-            modalDrawerStatus.textContent = 'Ταμείο ΟΚ';
-            modalDrawerStatus.classList.add('bg-green-100', 'text-green-800');
+            modalDrawerStatus.textContent = '✓ Ταμείο ΟΚ';
+            modalDrawerStatus.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-300');
         } else if (diff < 0) {
-            modalDrawerStatus.textContent = `Λείπουν ${Math.abs(diff).toFixed(2)} €`;
-            modalDrawerStatus.classList.add('bg-red-100', 'text-red-800');
+            modalDrawerStatus.textContent = `⚠️ Λείπουν ${Math.abs(diff).toFixed(2)} €`;
+            modalDrawerStatus.classList.add('bg-rose-50', 'text-rose-800', 'border-rose-300');
         } else {
-            modalDrawerStatus.textContent = `Πλεόνασμα ${diff.toFixed(2)} €`;
-            modalDrawerStatus.classList.add('bg-orange-100', 'text-orange-800');
+            modalDrawerStatus.textContent = `ℹ️ Πλεόνασμα ${diff.toFixed(2)} €`;
+            modalDrawerStatus.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
         }
     } else {
         modalDrawerStatus.classList.add('hidden');
@@ -505,7 +551,7 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             const wage = rate * hours;
             workingEmployeesCount++;
 
-            let alreadyBadge = hasAlreadyWorked ? '<span class="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded ml-2" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>' : '';
+            let alreadyBadge = hasAlreadyWorked ? '<span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-md ml-1.5 font-semibold" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>' : '';
 
             let timeRanges = [];
             let tFrom = '', tTo = '', tFrom2 = '', tTo2 = '';
@@ -518,10 +564,10 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
                 if (tFrom && tTo) timeRanges.push(`${tFrom}-${tTo}`);
                 if (tFrom2 && tTo2) timeRanges.push(`${tFrom2}-${tTo2}`);
             }
-            let timeBadges = timeRanges.map(r => `<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded ml-1 font-medium shadow-sm whitespace-nowrap">🕒 ${r}</span>`).join('');
+            let timeBadges = timeRanges.map(r => `<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-md ml-1 font-medium shadow-sm whitespace-nowrap tabular-nums">🕒 ${r}</span>`).join('');
 
             const li = document.createElement('li');
-            li.className = 'flex flex-col gap-2 py-2 border-b border-gray-100 last:border-0 transition-opacity';
+            li.className = 'flex flex-col gap-2.5 rounded-xl border border-slate-200 p-3 bg-slate-50/60 transition-opacity';
             li.dataset.empName = name;
             li.dataset.empRate = rate;
             li.dataset.timeFrom = tFrom;
@@ -529,46 +575,46 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             li.dataset.timeFrom2 = tFrom2;
             li.dataset.timeTo2 = tTo2;
             li.innerHTML = `
-                <div class="flex justify-between items-center gap-1">
-                    <label class="flex items-center gap-2 cursor-pointer flex-grow">
-                        <input type="checkbox" class="modal-emp-active w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" ${hours > 0 ? 'checked' : ''}>
-                        <span class="font-medium text-gray-800 flex items-center flex-wrap">${name} <span class="text-xs font-normal text-gray-500 mx-1">(${formatCurrency(rate)}/ώ)</span>${timeBadges}${alreadyBadge}</span>
+                <div class="flex justify-between items-center gap-2">
+                    <label class="flex items-center gap-2.5 cursor-pointer flex-grow min-w-0">
+                        <input type="checkbox" class="modal-emp-active w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary flex-shrink-0" ${hours > 0 ? 'checked' : ''}>
+                        <span class="font-semibold text-slate-800 flex items-center flex-wrap gap-y-1 min-w-0">${name} <span class="text-xs font-normal text-slate-500 mx-1 tabular-nums">(${formatCurrency(rate)}/ώ)</span>${timeBadges}${alreadyBadge}</span>
                     </label>
-                    <span class="font-bold emp-total-cost text-gray-900 whitespace-nowrap flex-shrink-0">${formatCurrency(wage)}</span>
+                    <span class="font-bold emp-total-cost text-slate-900 whitespace-nowrap flex-shrink-0 tabular-nums text-base">${formatCurrency(wage)}</span>
                 </div>
-                <div class="flex gap-2 items-center pl-6">
-                    <input type="number" class="modal-emp-hours w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none ${hours > 0 ? '' : 'opacity-50'}" value="${hours}" step="0.5" min="0" ${hours > 0 ? '' : 'disabled'}>
-                    <select class="modal-emp-shift flex-grow px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary outline-none bg-white ${hours > 0 ? '' : 'opacity-50'}" ${hours > 0 ? '' : 'disabled'}>
+                <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center pl-7">
+                    <input type="number" class="modal-emp-hours w-20 px-2.5 py-1.5 text-base sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums ${hours > 0 ? '' : 'opacity-50'}" value="${hours}" step="0.5" min="0" ${hours > 0 ? '' : 'disabled'}>
+                    <select class="modal-emp-shift flex-grow px-2.5 py-1.5 text-base sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${hours > 0 ? '' : 'opacity-50'}" ${hours > 0 ? '' : 'disabled'}>
                         <option value="morning" ${defaultShift === 'morning' ? 'selected' : ''}>☀️ Πρωί</option>
                         <option value="night" ${defaultShift === 'night' ? 'selected' : ''}>🌙 Βράδυ</option>
                         <option value="split" ${defaultShift === 'split' ? 'selected' : ''}>⚡ Σπαστό</option>
                     </select>
-                    <label class="flex items-center gap-1 cursor-pointer whitespace-nowrap ${hours > 0 ? '' : 'opacity-50'} modal-emp-paid-drawer-label">
-                        <input type="checkbox" class="modal-emp-paid-from-drawer text-primary rounded border-gray-300 focus:ring-primary" checked title="Πληρώθηκε από το σημερινό ταμείο" ${hours > 0 ? '' : 'disabled'}>
-                        <span class="text-[10px] text-gray-500 leading-none">Από Ταμείο</span>
+                    <label class="flex items-center gap-1.5 cursor-pointer whitespace-nowrap bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 ${hours > 0 ? '' : 'opacity-50'} modal-emp-paid-drawer-label">
+                        <input type="checkbox" class="modal-emp-paid-from-drawer w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" checked title="Πληρώθηκε από το σημερινό ταμείο" ${hours > 0 ? '' : 'disabled'}>
+                        <span class="text-xs font-medium text-slate-600 leading-none">Από Ταμείο</span>
                     </label>
                 </div>
-                <details class="pl-6 mt-2 group" open>
-                    <summary class="text-xs text-blue-600 cursor-pointer group-open:mb-2 select-none">Επεξεργασία Ωραρίου</summary>
-                    <div class="flex items-center gap-2 w-full justify-start flex-wrap bg-gray-100 p-2 rounded-md border border-gray-200">
+                <details class="pl-7 mt-0.5 group">
+                    <summary class="text-xs font-medium text-blue-600 cursor-pointer select-none py-1">⏱️ Αλλαγή ακριβούς ωραρίου</summary>
+                    <div class="flex items-center gap-2 w-full justify-start flex-wrap bg-white p-2.5 mt-1 rounded-xl border border-slate-200 shadow-sm">
                         <div class="flex flex-col items-center">
-                            <label class="text-[10px] text-gray-500 font-bold mb-1">Από</label>
-                            <input type="time" class="modal-emp-time-from p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tFrom}">
+                            <label class="text-[10px] text-slate-500 font-bold mb-1">Από</label>
+                            <input type="time" class="modal-emp-time-from p-1.5 border border-slate-300 rounded-lg focus:ring-primary outline-none bg-slate-50/50 text-slate-700 w-[96px] text-center text-xs font-medium tabular-nums" value="${tFrom}">
                         </div>
-                        <span class="text-gray-400 font-bold mt-3">-</span>
+                        <span class="text-slate-400 font-bold mt-3">-</span>
                         <div class="flex flex-col items-center">
-                            <label class="text-[10px] text-gray-500 font-bold mb-1">Έως</label>
-                            <input type="time" class="modal-emp-time-to p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tTo}">
+                            <label class="text-[10px] text-slate-500 font-bold mb-1">Έως</label>
+                            <input type="time" class="modal-emp-time-to p-1.5 border border-slate-300 rounded-lg focus:ring-primary outline-none bg-slate-50/50 text-slate-700 w-[96px] text-center text-xs font-medium tabular-nums" value="${tTo}">
                         </div>
-                        <div class="w-px h-6 bg-gray-300 mx-1 mt-3 hidden sm:block"></div>
+                        <div class="w-px h-6 bg-slate-200 mx-1 mt-3 hidden sm:block"></div>
                         <div class="flex flex-col items-center">
-                            <label class="text-[10px] text-gray-500 font-bold mb-1">Από (2)</label>
-                            <input type="time" class="modal-emp-time-from-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tFrom2}">
+                            <label class="text-[10px] text-slate-500 font-bold mb-1">Από (2)</label>
+                            <input type="time" class="modal-emp-time-from-2 p-1.5 border border-slate-300 rounded-lg focus:ring-primary outline-none bg-slate-50/50 text-slate-700 w-[96px] text-center text-xs font-medium tabular-nums" value="${tFrom2}">
                         </div>
-                        <span class="text-gray-400 font-bold mt-3">-</span>
+                        <span class="text-slate-400 font-bold mt-3">-</span>
                         <div class="flex flex-col items-center">
-                            <label class="text-[10px] text-gray-500 font-bold mb-1">Έως (2)</label>
-                            <input type="time" class="modal-emp-time-to-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[90px] text-center text-xs font-medium" value="${tTo2}">
+                            <label class="text-[10px] text-slate-500 font-bold mb-1">Έως (2)</label>
+                            <input type="time" class="modal-emp-time-to-2 p-1.5 border border-slate-300 rounded-lg focus:ring-primary outline-none bg-slate-50/50 text-slate-700 w-[96px] text-center text-xs font-medium tabular-nums" value="${tTo2}">
                         </div>
                     </div>
                 </details>
@@ -671,11 +717,11 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
     });
 
     if (workingEmployeesCount === 0) {
-        modalShiftsList.innerHTML = '<li class="italic text-gray-400 py-1">Κανένας εργαζόμενος.</li>';
+        modalShiftsList.innerHTML = '<li class="italic text-slate-400 py-1">Κανένας εργαζόμενος.</li>';
     } else {
         const totalLi = document.createElement('li');
-        totalLi.className = 'flex justify-between items-center py-2 font-bold text-gray-800 mt-1 pt-1 border-t border-gray-300';
-        totalLi.innerHTML = `<span>Σύνολο Κόστους Προσωπικού:</span><span class="modal-staff-total-val text-primary">0,00 €</span>`;
+        totalLi.className = 'flex justify-between items-center py-2.5 px-3 font-bold text-slate-800 mt-1 bg-blue-50/60 rounded-xl border border-blue-100 tabular-nums';
+        totalLi.innerHTML = `<span class="text-xs uppercase tracking-wider text-slate-600">Σύνολο Κόστους Προσωπικού:</span><span class="modal-staff-total-val text-primary text-base">0,00 €</span>`;
         modalShiftsList.appendChild(totalLi);
         updateModalStaffTotal();
     }
@@ -698,21 +744,21 @@ export const updateModalExpensesUI = () => {
     modalExpensesList.innerHTML = '';
     let total = 0;
     if (appState.currentModalExpenses.length === 0) {
-        modalExpensesList.innerHTML = '<li class="italic text-gray-400">Κανένα έξοδο.</li>';
+        modalExpensesList.innerHTML = '<li class="italic text-slate-400 text-xs py-1">Κανένα έξοδο.</li>';
     } else {
         appState.currentModalExpenses.forEach((exp, index) => {
             total += exp.amount;
-            let badge = exp.category === 'agatho' ? '<span class="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded ml-2">Αγαθό</span>' : (exp.category === 'logariasmos' ? '<span class="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded ml-2">Λογαριασμός</span>' : '<span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-2">Υλικά</span>');
-            let paymentBadge = exp.paidFromDrawer === false ? '<span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded ml-2">🏦 Εκτός Ταμείου</span>' : '';
+            let badge = exp.category === 'agatho' ? '<span class="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Αγαθό</span>' : (exp.category === 'logariasmos' ? '<span class="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Λογαριασμός</span>' : '<span class="text-[10px] font-semibold bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Υλικά</span>');
+            let paymentBadge = exp.paidFromDrawer === false ? '<span class="text-[10px] font-semibold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">🏦 Εκτός Ταμείου</span>' : '';
             const li = document.createElement('li');
-            li.className = 'flex justify-between items-center bg-gray-50 px-2 py-1 rounded border border-gray-100';
+            li.className = 'flex justify-between items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80';
             li.innerHTML = `
-                <div class="flex items-center truncate pr-2">
-                    <span class="truncate">${exp.desc}</span>${badge}${paymentBadge}
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="truncate font-medium text-slate-700">${exp.desc}</span>${badge}${paymentBadge}
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="font-semibold">${formatCurrency(exp.amount)}</span>
-                    <button class="text-red-500 hover:text-red-700 font-bold" onclick="removeModalExpense(${index})">&times;</button>
+                    <span class="font-bold text-slate-900 tabular-nums">${formatCurrency(exp.amount)}</span>
+                    <button type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 font-bold text-lg leading-none transition-colors" onclick="removeModalExpense(${index})">&times;</button>
                 </div>
             `;
             modalExpensesList.appendChild(li);
@@ -727,21 +773,21 @@ export const updateEditExpensesUI = () => {
     editModalExpensesList.innerHTML = '';
     let total = 0;
     if (appState.currentEditExpenses.length === 0) {
-        editModalExpensesList.innerHTML = '<li class="italic text-gray-400">Κανένα έξοδο.</li>';
+        editModalExpensesList.innerHTML = '<li class="italic text-slate-400 text-xs py-1">Κανένα έξοδο.</li>';
     } else {
         appState.currentEditExpenses.forEach((exp, index) => {
             total += exp.amount;
-            let badge = exp.category === 'agatho' ? '<span class="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded ml-2">Αγαθό</span>' : (exp.category === 'logariasmos' ? '<span class="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded ml-2">Λογαριασμός</span>' : '<span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded ml-2">Υλικά</span>');
-            let paymentBadge = exp.paidFromDrawer === false ? '<span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded ml-2">🏦 Εκτός Ταμείου</span>' : '';
+            let badge = exp.category === 'agatho' ? '<span class="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Αγαθό</span>' : (exp.category === 'logariasmos' ? '<span class="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Λογαριασμός</span>' : '<span class="text-[10px] font-semibold bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-md flex-shrink-0">Υλικά</span>');
+            let paymentBadge = exp.paidFromDrawer === false ? '<span class="text-[10px] font-semibold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">🏦 Εκτός Ταμείου</span>' : '';
             const li = document.createElement('li');
-            li.className = 'flex justify-between items-center bg-gray-50 px-2 py-1 rounded border border-gray-100';
+            li.className = 'flex justify-between items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200/80';
             li.innerHTML = `
-                <div class="flex items-center truncate pr-2">
-                    <span class="truncate">${exp.desc}</span>${badge}${paymentBadge}
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="truncate font-medium text-slate-700">${exp.desc}</span>${badge}${paymentBadge}
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="font-semibold">${formatCurrency(exp.amount)}</span>
-                    <button type="button" class="text-red-500 hover:text-red-700 font-bold" onclick="removeEditExpense(${index})">&times;</button>
+                    <span class="font-bold text-slate-900 tabular-nums">${formatCurrency(exp.amount)}</span>
+                    <button type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 font-bold text-lg leading-none transition-colors" onclick="removeEditExpense(${index})">&times;</button>
                 </div>
             `;
             editModalExpensesList.appendChild(li);
@@ -932,8 +978,20 @@ export const updateCalculations = () => {
 
 export const renderMonthlyTable = (records, wageMap) => {
     monthlyRecordsList.innerHTML = '';
+    if (monthlyMobileCards) monthlyMobileCards.innerHTML = '';
+
     if (!records || records.length === 0) {
-        monthlyRecordsList.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 italic bg-gray-50 border-b border-gray-200"><span class="text-2xl block mb-2">📂</span>Δεν υπάρχουν αναλυτικά ημερήσια ταμεία για αυτόν τον μήνα.<br><span class="text-xs text-gray-400 mt-1 block">Τα νούμερα προέρχονται από αποθηκευμένη Σύνοψη ή Γρήγορη Εισαγωγή.</span></td></tr>';
+        const emptyHtml = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 italic bg-gray-50 border-b border-gray-200"><span class="text-2xl block mb-2">📂</span>Δεν υπάρχουν αναλυτικά ημερήσια ταμεία για αυτόν τον μήνα.<br><span class="text-xs text-gray-400 mt-1 block">Τα νούμερα προέρχονται από αποθηκευμένη Σύνοψη ή Γρήγορη Εισαγωγή.</span></td></tr>';
+        monthlyRecordsList.innerHTML = emptyHtml;
+        if (monthlyMobileCards) {
+            monthlyMobileCards.innerHTML = `
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 italic shadow-sm">
+                    <span class="text-2xl block mb-2">📂</span>
+                    Δεν υπάρχουν αναλυτικά ημερήσια ταμεία για αυτόν τον μήνα.
+                    <span class="text-xs text-slate-400 mt-1 block not-italic">Τα νούμερα προέρχονται από αποθηκευμένη Σύνοψη ή Γρήγορη Εισαγωγή.</span>
+                </div>
+            `;
+        }
         return;
     }
     
@@ -992,33 +1050,43 @@ export const renderMonthlyTable = (records, wageMap) => {
             const netGroupRev = group.totalRev / (1 + appState.AVERAGE_VAT_RATE);
             const fcPercentage = netGroupRev > 0 ? ((group.totalAgatho + group.totalYlika) / netGroupRev) * 100 : 0;
             const fcColor = fcPercentage > 40 ? 'text-red-500' : (fcPercentage <= 30 ? 'text-green-500' : 'text-orange-500');
+            const fcBadgeColor = fcPercentage > 40 ? 'bg-rose-50 text-rose-700 border-rose-200' : (fcPercentage <= 30 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200');
 
-            let expBreakdown = (group.totalAgatho > 0 || group.totalYlika > 0 || group.totalLogariasmos > 0)
-                ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Εξόδων:\\n\\n🍎 Αγαθά: ${formatCurrency(group.totalAgatho)}\\n📦 Υλικά: ${formatCurrency(group.totalYlika)}\\n📄 Λογαριασμοί: ${formatCurrency(group.totalLogariasmos)}')">Αγ: ${formatCurrency(group.totalAgatho)} | Υλ: ${formatCurrency(group.totalYlika)} | Λογ: ${formatCurrency(group.totalLogariasmos)}</span>` : '';
+            const hasExpBreakdown = (group.totalAgatho > 0 || group.totalYlika > 0 || group.totalLogariasmos > 0);
+            const expDetailsText = `🍎 Αγαθά: ${formatCurrency(group.totalAgatho)}\n📦 Υλικά: ${formatCurrency(group.totalYlika)}\n📄 Λογαριασμοί: ${formatCurrency(group.totalLogariasmos)}${group.totalExpOut > 0 ? `\n🏦 Πληρώθηκαν Εκτός Ταμείου: ${formatCurrency(group.totalExpOut)}` : ''}`;
+
+            const revDetailsText = `💳 POS: ${formatCurrency(group.totalPos)}\n💵 Μετρητά: ${formatCurrency(group.totalCash)}`;
 
             const workedArray = Array.from(group.workedNames);
+            const wagesDetailsText = workedArray.length > 0
+                ? `👤 ${workedArray.join('\n👤 ')}${group.totalWagesOut > 0 ? `\n\n🏦 Πληρώθηκαν Εκτός Ταμείου: ${formatCurrency(group.totalWagesOut)}` : ''}`
+                : 'Κανένας εργαζόμενος';
+
+            let shiftDetailsText = '';
+            group.records.forEach((rec, idx) => {
+                const cashier = rec.cashier_name || 'Άγνωστος';
+                shiftDetailsText += `Βάρδια ${idx + 1} (${cashier})\nΤζίρος: ${formatCurrency(parseFloat(rec.daily_revenue) || 0)} (POS: ${formatCurrency(parseFloat(rec.pos_revenue) || 0)} | Μετρ: ${formatCurrency(parseFloat(rec.cash_revenue) || 0)})\nΈξοδα: ${formatCurrency(parseFloat(rec.total_expenses) || 0)}\n──────────────────────\n`;
+            });
+
+            let expBreakdown = hasExpBreakdown
+                ? `<br><button type="button" class="exp-details-btn text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium text-left">Αγ: ${formatCurrency(group.totalAgatho)} | Υλ: ${formatCurrency(group.totalYlika)} | Λογ: ${formatCurrency(group.totalLogariasmos)}</button>` : '';
+
             let wagesBreakdown = workedArray.length > 0 
-                ? `<br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Προσωπικό που εργάστηκε:\\n\\n👤 ${workedArray.join('\\n👤 ')}')">${workedArray.length > 2 ? workedArray.slice(0,2).join(', ') + '...' : workedArray.join(', ')}</span>`
+                ? `<br><button type="button" class="wages-details-btn text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium text-left">${workedArray.length > 2 ? workedArray.slice(0,2).join(', ') + '...' : workedArray.join(', ')}</button>`
                 : `<br><span class="text-[11px] text-gray-400">Κανείς</span>`;
                 
             let expOutBadge = group.totalExpOut > 0 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 mt-1 inline-block shadow-sm" title="Πληρώθηκαν εκτός ταμείου">🏦 Εκτός: ${formatCurrency(group.totalExpOut)}</span>` : '';
             let wagesOutBadge = group.totalWagesOut > 0 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200 mt-1 inline-block shadow-sm" title="Πληρώθηκαν εκτός ταμείου">🏦 Εκτός: ${formatCurrency(group.totalWagesOut)}</span>` : '';
 
-            let shiftDetailsAlert = `Αναλυτικά Ταμεία (${dateFormatted}):\\n\\n`;
+            let actionsHtml = `<div class="flex flex-col gap-1.5">`;
             group.records.forEach((rec, idx) => {
-                const cashier = (rec.cashier_name || 'Άγνωστος').replace(/'/g, " ");
-                shiftDetailsAlert += `Βάρδια ${idx + 1} (${cashier})\\nΤζίρος: ${formatCurrency(parseFloat(rec.daily_revenue) || 0)} (POS: ${formatCurrency(parseFloat(rec.pos_revenue) || 0)} | Μετρ: ${formatCurrency(parseFloat(rec.cash_revenue) || 0)})\\nΈξοδα: ${formatCurrency(parseFloat(rec.total_expenses) || 0)}\\n----------------------\\n`;
-            });
-
-            let actionsHtml = `<div class="flex flex-col gap-1">`;
-            group.records.forEach((rec, idx) => {
-                const cashierShort = (rec.cashier_name || 'Βάρδια '+(idx+1)).substring(0,8);
+                const cashierLabel = rec.cashier_name || ('Βάρδια ' + (idx + 1));
                 actionsHtml += `
-                    <div class="flex items-center justify-between gap-1 bg-white px-2 py-1 rounded border border-gray-200">
-                        <span class="text-[10px] text-gray-500 font-medium truncate max-w-[45px]" title="${rec.cashier_name || 'Βάρδια '+(idx+1)}">${cashierShort}</span>
-                        <div class="flex items-center gap-1 flex-shrink-0">
-                            <button onclick="editRecord(${rec.id}, '${rec.date}')" class="text-blue-500 hover:text-blue-700 transition-colors" title="Επεξεργασία">✏️</button>
-                            <button onclick="deleteRecord(${rec.id})" class="text-red-500 hover:text-red-700 transition-colors" title="Διαγραφή">❌</button>
+                    <div class="flex items-center justify-between gap-2 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-600 font-medium truncate max-w-[95px]" title="${cashierLabel}">${cashierLabel}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button type="button" onclick="editRecord(${rec.id}, '${rec.date}')" class="w-7 h-7 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 flex items-center justify-center text-blue-600 hover:text-blue-700 transition-colors shadow-sm" title="Επεξεργασία">✏️</button>
+                            <button type="button" onclick="deleteRecord(${rec.id})" class="w-7 h-7 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 flex items-center justify-center text-rose-500 hover:text-rose-700 transition-colors shadow-sm" title="Διαγραφή">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -1026,25 +1094,124 @@ export const renderMonthlyTable = (records, wageMap) => {
             actionsHtml += `</div>`;
 
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-gray-50';
+            tr.className = 'hover:bg-slate-50/80 transition-colors';
             tr.innerHTML = `
-                <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="text-blue-600 hover:text-blue-800 cursor-pointer font-bold underline decoration-blue-300 decoration-2 underline-offset-2" onclick="alert('${shiftDetailsAlert}')">${dateFormatted}</span>
-                    ${group.records.length > 1 ? `<br><span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded mt-2 inline-block shadow-sm">${group.records.length} Ταμεία</span>` : ''}
+                <td class="px-6 py-3.5 text-sm text-slate-800 align-top">
+                    <button type="button" class="shift-details-btn text-blue-600 hover:text-blue-800 cursor-pointer font-bold underline decoration-blue-300 decoration-2 underline-offset-2 text-left">${dateFormatted}</button>
+                    ${group.records.length > 1 ? `<br><span class="text-[10px] font-semibold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md mt-1.5 inline-block shadow-sm">${group.records.length} Ταμεία</span>` : ''}
                 </td>
-                <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(group.totalRev)}</span>
-                    <br><span class="text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium" onclick="alert('Συνολική Ανάλυση Τζίρου:\\n\\n💳 POS: ${formatCurrency(group.totalPos)}\\n💵 Μετρητά: ${formatCurrency(group.totalCash)}')">POS: ${formatCurrency(group.totalPos)} | Μετρ: ${formatCurrency(group.totalCash)}</span>
+                <td class="px-6 py-3.5 text-sm text-slate-800 align-top">
+                    <span class="font-semibold">${formatCurrency(group.totalRev)}</span>
+                    <br><button type="button" class="rev-details-btn text-[11px] text-blue-600 hover:text-blue-800 cursor-pointer font-medium text-left">POS: ${formatCurrency(group.totalPos)} | Μετρ: ${formatCurrency(group.totalCash)}</button>
                 </td>
-                <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(group.totalExp)}</span>${expBreakdown}${expOutBadge}
+                <td class="px-6 py-3.5 text-sm text-slate-800 align-top">
+                    <span class="font-semibold">${formatCurrency(group.totalExp)}</span>${expBreakdown}${expOutBadge}
                 </td>
-                <td class="px-6 py-3 text-sm text-gray-800 align-top">
-                    <span class="font-medium">${formatCurrency(group.totalWages)}</span>${wagesBreakdown}${wagesOutBadge}
+                <td class="px-6 py-3.5 text-sm text-slate-800 align-top">
+                    <span class="font-semibold">${formatCurrency(group.totalWages)}</span>${wagesBreakdown}${wagesOutBadge}
                 </td>
-                <td class="px-6 py-3 text-sm font-semibold align-top ${fcColor}">${fcPercentage.toFixed(1)}%</td>
-                <td class="px-4 py-2 text-sm text-center align-top">${actionsHtml}</td>
+                <td class="px-6 py-3.5 text-sm font-bold align-top ${fcColor}">${fcPercentage.toFixed(1)}%</td>
+                <td class="px-4 py-2.5 text-sm text-center align-top">${actionsHtml}</td>
             `;
+
+            tr.querySelector('.shift-details-btn')?.addEventListener('click', () => {
+                showDetailsModal(`Αναλυτικά Ταμεία (${dateFormatted})`, shiftDetailsText);
+            });
+            tr.querySelector('.rev-details-btn')?.addEventListener('click', () => {
+                showDetailsModal(`Συνολική Ανάλυση Τζίρου (${dateFormatted})`, revDetailsText);
+            });
+            tr.querySelector('.exp-details-btn')?.addEventListener('click', () => {
+                showDetailsModal(`Συνολική Ανάλυση Εξόδων (${dateFormatted})`, expDetailsText);
+            });
+            tr.querySelector('.wages-details-btn')?.addEventListener('click', () => {
+                showDetailsModal(`Προσωπικό που εργάστηκε (${dateFormatted})`, wagesDetailsText);
+            });
+
             monthlyRecordsList.appendChild(tr);
+
+            // Mobile SaaS Κάρτα Ημέρας (< md)
+            if (monthlyMobileCards) {
+                const card = document.createElement('div');
+                card.className = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 tabular-nums';
+
+                let mobileShiftsHtml = '';
+                group.records.forEach((rec, idx) => {
+                    const cashierFull = rec.cashier_name || ('Βάρδια ' + (idx + 1));
+                    mobileShiftsHtml += `
+                        <div class="flex items-center justify-between gap-2 bg-slate-50/90 px-3 py-2 rounded-xl border border-slate-200/80">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-semibold text-slate-700 block truncate">👤 ${cashierFull}</span>
+                                <span class="text-[11px] text-slate-500">${formatCurrency(parseFloat(rec.daily_revenue) || 0)}</span>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <button type="button" onclick="editRecord(${rec.id}, '${rec.date}')" class="min-h-[38px] px-3 rounded-xl bg-white hover:bg-blue-50 text-blue-600 border border-slate-200/90 font-semibold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all">
+                                    <span>✏️</span> Επεξεργασία
+                                </button>
+                                <button type="button" onclick="deleteRecord(${rec.id})" class="min-h-[38px] px-3 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200/90 font-semibold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all" title="Διαγραφή">
+                                    <span>🗑️</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <!-- Header Κάρτας -->
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" class="m-shift-details-btn text-base font-bold text-slate-900 underline decoration-blue-300 decoration-2 underline-offset-2 text-left">${dateFormatted}</button>
+                            <span class="text-[11px] font-semibold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">${group.records.length} ${group.records.length === 1 ? 'Ταμείο' : 'Ταμεία'}</span>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${fcBadgeColor}">FC ${fcPercentage.toFixed(1)}%</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Τζίρος</span>
+                            <span class="text-lg font-bold text-slate-900 tabular-nums">${formatCurrency(group.totalRev)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Body Κάρτας (Grid 2 Στηλών) -->
+                    <div class="grid grid-cols-2 gap-2.5 text-xs">
+                        <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/60 flex flex-col justify-between">
+                            <span class="text-[10px] uppercase font-semibold text-slate-400 mb-1">POS vs Μετρητά</span>
+                            <div class="space-y-0.5 text-slate-700 font-medium">
+                                <div class="flex justify-between"><span>💳 POS:</span><span class="font-semibold text-slate-900">${formatCurrency(group.totalPos)}</span></div>
+                                <div class="flex justify-between"><span>💵 Μετρ.:</span><span class="font-semibold text-slate-900">${formatCurrency(group.totalCash)}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/60 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] uppercase font-semibold text-slate-400">Έξοδα & Προσωπικό</span>
+                                ${hasExpBreakdown ? `<button type="button" class="m-exp-details-btn text-[11px] text-blue-600 font-semibold underline">Ανάλυση</button>` : ''}
+                            </div>
+                            <div class="space-y-0.5 text-slate-700 font-medium">
+                                <div class="flex justify-between"><span>🧾 Έξοδα:</span><span class="font-semibold text-rose-600">${formatCurrency(group.totalExp)}</span></div>
+                                <div class="flex justify-between items-center">
+                                    <button type="button" class="m-wages-details-btn text-left underline decoration-slate-300">👥 Μεροκ.:</button>
+                                    <span class="font-semibold text-slate-900">${formatCurrency(group.totalWages)}</span>
+                                </div>
+                            </div>
+                            ${(group.totalExpOut > 0 || group.totalWagesOut > 0) ? `<div class="mt-1.5 pt-1 border-t border-slate-200/60 flex flex-wrap gap-1"><span class="text-[10px] font-semibold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-md">🏦 Εκτός Ταμείου: ${formatCurrency(group.totalExpOut + group.totalWagesOut)}</span></div>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Footer Κάρτας (Βάρδιες & Κουμπιά Αφής) -->
+                    <div class="space-y-2 pt-1">
+                        ${mobileShiftsHtml}
+                    </div>
+                `;
+
+                card.querySelector('.m-shift-details-btn')?.addEventListener('click', () => {
+                    showDetailsModal(`Αναλυτικά Ταμεία (${dateFormatted})`, shiftDetailsText);
+                });
+                card.querySelector('.m-exp-details-btn')?.addEventListener('click', () => {
+                    showDetailsModal(`Συνολική Ανάλυση Εξόδων (${dateFormatted})`, expDetailsText);
+                });
+                card.querySelector('.m-wages-details-btn')?.addEventListener('click', () => {
+                    showDetailsModal(`Προσωπικό που εργάστηκε (${dateFormatted})`, wagesDetailsText);
+                });
+
+                monthlyMobileCards.appendChild(card);
+            }
         });
 };

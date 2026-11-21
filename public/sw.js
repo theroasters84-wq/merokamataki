@@ -1,8 +1,14 @@
-const CACHE_NAME = 'merokamataki-v11';
+const CACHE_NAME = 'merokamataki-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/app.js',
+  '/api.js',
+  '/auth.js',
+  '/dom.js',
+  '/employees.js',
+  '/state.js',
+  '/utils.js',
   '/manifest.json',
   '/merokamataki.png'
 ];

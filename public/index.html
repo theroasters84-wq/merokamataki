@@ -2,17 +2,27 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Finance Manager - Μεροκαματάκι</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="/merokamataki.png">
+    <link rel="apple-touch-icon" href="/merokamataki.png">
     <meta name="theme-color" content="#3b82f6">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
                     colors: {
                         primary: '#3b82f6',
                         secondary: '#10b981',
@@ -21,6 +31,33 @@
             }
         }
     </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Modern Segmented Pill Control compatibility with app.js tab switching */
+        #tabDashboard.border-primary,
+        #tabMonthlyReport.border-primary {
+            background-color: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+            font-weight: 600;
+        }
+        #tabDashboard.border-transparent,
+        #tabMonthlyReport.border-transparent {
+            background-color: transparent;
+            color: #64748b;
+            box-shadow: none;
+        }
+        #tabDashboard.border-transparent:hover,
+        #tabMonthlyReport.border-transparent:hover {
+            color: #1e293b;
+            background-color: rgba(255, 255, 255, 0.45);
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Στιγμιαίος έλεγχος σύνδεσης για να μην "αναβοσβήνει" η οθόνη Login κατά την ανανέωση
@@ -31,95 +68,108 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans antialiased selection:bg-blue-100">
     
     <!-- Οθόνη Σύνδεσης -->
     <div id="loginContainer" class="min-h-screen flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200/80">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Μεροκαματάκι</h1>
-                <p id="authSubtitle" class="text-gray-500">Συνδεθείτε για να διαχειριστείτε το κατάστημά σας</p>
+                <div class="w-12 h-12 bg-blue-600/10 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-inner">💼</div>
+                <h1 class="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Μεροκαματάκι</h1>
+                <p id="authSubtitle" class="text-slate-500 text-sm">Συνδεθείτε για να διαχειριστείτε το κατάστημά σας</p>
             </div>
             
             <!-- Φόρμα Εισόδου -->
             <form id="loginFormArea" class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="loginEmail" autocomplete="username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                    <input type="email" id="loginEmail" autocomplete="username" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="name@example.com">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Κωδικός Πρόσβασης</label>
-                    <input type="password" id="loginPassword" autocomplete="current-password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Κωδικός Πρόσβασης</label>
+                    <input type="password" id="loginPassword" autocomplete="current-password" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="••••••••">
                 </div>
                 
                 <div class="flex items-center justify-between">
-                    <a href="forgot-password.html" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα τον κωδικό μου</a>
+                    <a href="forgot-password.html" class="text-sm text-primary hover:text-blue-700 font-medium transition-colors">Ξέχασα τον κωδικό μου</a>
                 </div>
                 
-                <button type="button" id="loginBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md mt-4">
+                <button type="button" id="loginBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.99] mt-4">
                     Είσοδος
                 </button>
                 
                 <div class="text-center mt-4">
-                    <p class="text-sm text-gray-600">Δεν έχεις λογαριασμό; <button type="button" id="showRegisterBtn" class="text-primary hover:text-blue-700 font-medium transition-colors">Εγγραφή</button></p>
+                    <p class="text-sm text-slate-600">Δεν έχεις λογαριασμό; <button type="button" id="showRegisterBtn" class="text-primary hover:text-blue-700 font-semibold transition-colors">Εγγραφή</button></p>
                 </div>
             </form>
 
             <!-- Φόρμα Εγγραφής (Αρχικά Κρυφή) -->
             <form id="registerFormArea" class="space-y-5 hidden">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Όνομα Καταστήματος <span class="text-xs text-gray-400 font-normal">(Προαιρετικό)</span></label>
-                    <input type="text" id="registerStoreName" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="π.χ. Το Στέκι">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Όνομα Καταστήματος <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
+                    <input type="text" id="registerStoreName" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="π.χ. Το Στέκι">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="registerEmail" autocomplete="username" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="name@example.com">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                    <input type="email" id="registerEmail" autocomplete="username" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="name@example.com">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Κωδικός Πρόσβασης</label>
-                    <input type="password" id="registerPassword" autocomplete="new-password" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Κωδικός Πρόσβασης</label>
+                    <input type="password" id="registerPassword" autocomplete="new-password" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="••••••••">
                 </div>
                 
-                <button type="button" id="registerBtn" class="w-full bg-secondary hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md mt-4">
+                <button type="button" id="registerBtn" class="w-full bg-secondary hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.99] mt-4">
                     Δημιουργία Λογαριασμού
                 </button>
                 
                 <div class="text-center mt-4">
-                    <p class="text-sm text-gray-600">Έχεις ήδη λογαριασμό; <button type="button" id="showLoginBtn" class="text-primary hover:text-blue-700 font-medium transition-colors">Είσοδος</button></p>
+                    <p class="text-sm text-slate-600">Έχεις ήδη λογαριασμό; <button type="button" id="showLoginBtn" class="text-primary hover:text-blue-700 font-semibold transition-colors">Είσοδος</button></p>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Κεντρική Εφαρμογή (Αρχικά Κρυφή) -->
-    <div id="appContainer" class="hidden container mx-auto px-4 py-8 max-w-6xl">
-        <header class="mb-8 flex justify-between items-center flex-wrap gap-4">
-            <div>
-                <div class="flex items-center gap-3 flex-wrap">
-                    <h1 id="secretTapTitle" class="text-3xl font-bold text-gray-900 cursor-pointer select-none">Μεροκαματάκι - Διαχείριση Καταστήματος</h1>
-                    <button id="helpBtn" class="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-3 py-1 rounded-full transition-colors flex items-center gap-1 border border-blue-200 shadow-sm">
-                        <span class="font-bold font-serif italic">i</span> Οδηγίες
+    <div id="appContainer" class="hidden container mx-auto px-3 sm:px-4 py-4 sm:py-8 pb-[max(2rem,env(safe-area-inset-bottom))] max-w-6xl">
+        <!-- Modern Top App Bar -->
+        <header class="mb-6 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div class="w-full lg:w-auto">
+                <div class="flex items-center justify-between sm:justify-start gap-2.5 flex-wrap">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-lg shadow-inner flex-shrink-0">📊</span>
+                        <h1 id="secretTapTitle" class="text-lg sm:text-2xl leading-tight font-bold text-slate-900 tracking-tight cursor-pointer select-none">Μεροκαματάκι - Διαχείριση Καταστήματος</h1>
+                    </div>
+                    <button id="helpBtn" class="text-xs sm:text-sm bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-semibold min-h-[36px] px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border border-blue-200/80 shadow-sm">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white text-[11px] font-bold font-serif italic inline-flex items-center justify-center">i</span> Οδηγίες
                     </button>
                 </div>
-                <p class="text-gray-600 mt-2">Εργαλείο παρακολούθησης ημερήσιου και εβδομαδιαίου κόστους.</p>
+                <p class="text-slate-500 text-xs sm:text-sm mt-1.5">Εργαλείο παρακολούθησης ημερήσιου και εβδομαδιαίου κόστους.</p>
             </div>
-            <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                <button id="prevMonthBtn" class="text-gray-500 hover:text-primary font-bold text-xl">&lt;</button>
-                <h2 id="currentMonthDisplay" class="text-lg font-bold w-40 text-center text-gray-800">Μήνας Έτος</h2>
-                <button id="nextMonthBtn" class="text-gray-500 hover:text-primary font-bold text-xl">&gt;</button>
-                <button id="installAppBtn" class="hidden ml-2 text-sm bg-primary hover:bg-blue-700 text-white font-medium px-3 py-1 rounded shadow-sm transition-colors">Λήψη Εφαρμογής</button>
-                <button id="logoutBtn" class="ml-2 text-sm text-red-500 hover:text-red-700 font-medium px-3 py-1 border border-red-200 rounded hover:bg-red-50 transition-colors">Έξοδος</button>
+
+            <div class="flex items-center flex-wrap justify-between sm:justify-end w-full lg:w-auto gap-2 pt-2.5 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                <!-- Ενιαίος Επιλογέας Μήνα (Pill) -->
+                <div class="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200/60">
+                    <button id="prevMonthBtn" class="text-slate-600 hover:text-primary font-bold text-lg min-w-[38px] min-h-[38px] flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm active:scale-95 transition-all">&lt;</button>
+                    <h2 id="currentMonthDisplay" class="min-w-[125px] sm:w-36 text-center font-semibold text-xs sm:text-sm text-slate-800 px-1 select-none">Μήνας Έτος</h2>
+                    <button id="nextMonthBtn" class="text-slate-600 hover:text-primary font-bold text-lg min-w-[38px] min-h-[38px] flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm active:scale-95 transition-all">&gt;</button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-1.5 sm:gap-2 ml-auto sm:ml-0">
+                    <button id="installAppBtn" class="hidden text-xs sm:text-sm bg-primary hover:bg-blue-700 text-white font-semibold min-h-[38px] px-3 py-1.5 inline-flex items-center justify-center rounded-xl shadow-sm transition-colors">Λήψη Εφαρμογής</button>
+                    <button id="logoutBtn" class="text-xs sm:text-sm text-rose-600 hover:text-rose-700 font-semibold min-h-[38px] px-3 py-1.5 inline-flex items-center justify-center border border-rose-200/80 bg-rose-50/40 rounded-xl hover:bg-rose-50 transition-colors">Έξοδος</button>
+                </div>
             </div>
         </header>
 
-        <!-- Tabs Navigation -->
-        <div class="mb-6 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8">
-                <button id="tabDashboard" class="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Ημερολόγιο & Στατιστικά
+        <!-- Modern Segmented Pill Control Tabs Navigation -->
+        <div class="mb-6">
+            <nav class="bg-slate-200/70 p-1 rounded-xl inline-flex w-full sm:w-auto gap-1">
+                <button id="tabDashboard" class="border-primary text-primary flex-1 sm:flex-initial whitespace-nowrap py-2.5 px-4 rounded-lg border-0 font-medium text-xs sm:text-sm transition-all">
+                    📅 Ημερολόγιο & Στατιστικά
                 </button>
-                <button id="tabMonthlyReport" class="admin-only hidden border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Μηνιαία Αναφορά
+                <button id="tabMonthlyReport" class="admin-only hidden border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex-1 sm:flex-initial whitespace-nowrap py-2.5 px-4 rounded-lg border-0 font-medium text-xs sm:text-sm transition-all">
+                    📈 Μηνιαία Αναφορά
                 </button>
             </nav>
         </div>
@@ -127,12 +177,12 @@
         <!-- Dashboard View -->
         <div id="dashboardView">
             <!-- Ημερολόγιο -->
-            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200 mb-8">
-                <div class="overflow-x-auto pb-4 custom-scrollbar">
-                    <div class="grid grid-cols-7 gap-2 mb-2 text-center text-sm font-semibold text-gray-500 uppercase tracking-wider min-w-[700px]">
+            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-3 sm:p-6 mb-6 sm:mb-8">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-0 md:min-w-[700px]">
                         <div>Δευ</div><div>Τρι</div><div>Τετ</div><div>Πεμ</div><div>Παρ</div><div>Σαβ</div><div>Κυρ</div>
                     </div>
-                    <div id="calendarGrid" class="grid grid-cols-7 gap-2 auto-rows-fr min-w-[700px]">
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-2 auto-rows-fr min-w-0 md:min-w-[700px]">
                         <!-- Το Grid 7x5 (ή 7x6) θα δημιουργηθεί δυναμικά μέσω JS -->
                     </div>
                 </div>
@@ -153,17 +203,17 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="posRevenue" class="block text-sm font-medium text-gray-700 mb-1">Τζίρος Κάρτας POS (€)</label>
-                                <input type="number" id="posRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
+                                <input type="number" inputmode="decimal" id="posRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
                             </div>
                             <div>
                                 <label for="cashRevenue" class="block text-sm font-medium text-gray-700 mb-1">Μετρητά στο Συρτάρι (€)</label>
-                                <input type="number" id="cashRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
+                                <input type="number" inputmode="decimal" id="cashRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
                             </div>
                         </div>
                         
                         <div>
                             <label for="actualCash" class="block text-sm font-medium text-gray-700 mb-1">Αναφορά "Ζ" Ταμειακής (€) <span class="text-xs text-gray-500 font-normal">(Προαιρετικό)</span></label>
-                            <input type="number" id="actualCash" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
+                            <input type="number" inputmode="decimal" id="actualCash" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
                             <div id="drawerStatus" class="mt-2 text-sm font-medium p-2 rounded hidden"></div>
                         </div>
                         
@@ -175,13 +225,13 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Έξοδα Ημέρας</label>
                             <div class="flex flex-wrap gap-2 mb-2">
-                                <input type="text" id="dashExpenseDesc" placeholder="Περιγραφή (π.χ. Κρέατα)" class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none min-w-[100px]">
-                                <select id="dashExpenseCategory" class="w-auto px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none bg-white">
+                                <input type="text" id="dashExpenseDesc" placeholder="Περιγραφή (π.χ. Κρέατα)" class="flex-1 px-2 py-1.5 text-base sm:text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none min-w-[100px]">
+                                <select id="dashExpenseCategory" class="w-auto px-2 py-1.5 text-base sm:text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none bg-white">
                                     <option value="agatho">Αγαθό</option>
                                     <option value="logariasmos">Λογαριασμός</option>
                                     <option value="ylika">Υλικά</option>
                                 </select>
-                                <input type="number" id="dashExpenseAmount" placeholder="Ποσό (€)" class="w-20 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none" min="0" step="0.01">
+                                <input type="number" inputmode="decimal" id="dashExpenseAmount" placeholder="Ποσό (€)" class="w-20 px-2 py-1.5 text-base sm:text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none" min="0" step="0.01">
                                 <label class="flex items-center gap-1 text-xs text-gray-600 whitespace-nowrap cursor-pointer">
                                     <input type="checkbox" id="dashExpensePaidFromDrawer" checked class="text-primary rounded border-gray-300 focus:ring-primary">
                                     Από Ταμείο
@@ -208,15 +258,20 @@
                 </div>
 
                 <!-- Κάρτα 2: Προσωπικό & Πάγια (Εβδομάδας) -->
-                <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col lg:col-span-2">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Προσωπικό (Εβδομάδας)</h2>
+                <div class="admin-only hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6 flex flex-col lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold text-slate-900">Προσωπικό (Εβδομάδας)</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Ορίστε τις βάρδιες και τα ωρομίσθια της ομάδας σας</p>
+                        </div>
+                        <button id="addEmployeeBtn" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm">+ Προσθήκη</button>
+                    </div>
                     
                     <div class="space-y-5">
                         <!-- Προσωπικό -->
                         <div>
-                            <h3 class="text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+                            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                                 Εργαζόμενοι
-                                <button id="addEmployeeBtn" class="text-blue-600 hover:text-blue-800 text-xs font-semibold">+ Προσθήκη</button>
                             </h3>
                             <div class="space-y-3" id="employeeList">
                                 <!-- Μια γραμμή εργαζόμενου (Παράδειγμα - θα αντικατασταθεί δυναμικά) -->
@@ -226,20 +281,20 @@
                 </div>
 
                 <!-- Κάρτα 3: Συνολική Εικόνα Εβδομάδας -->
-                <div class="admin-only hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 border border-slate-700 text-white flex flex-col">
-                    <h2 class="text-xl font-semibold mb-4 border-b border-slate-600 pb-2">Εικόνα Εβδομάδας</h2>
+                <div class="admin-only hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-lg p-5 sm:p-6 border border-slate-700/80 text-white flex flex-col">
+                    <h2 class="text-lg sm:text-xl font-bold mb-4 border-b border-slate-700/80 pb-3">Εικόνα Εβδομάδας</h2>
                     
                     <div class="flex-grow flex flex-col justify-center space-y-6">
                         <div>
-                            <p class="text-sm text-slate-300 font-medium mb-1">Συνολικό Κόστος Λειτουργίας</p>
-                            <p class="text-3xl font-bold text-white tracking-tight" id="totalWeeklyCost">0.00 <span class="text-xl font-normal text-slate-400">€</span></p>
-                        <p class="text-xs text-slate-400 mt-1">Προσωπικό + Πάγια + Μ.Ο. Πρώτων Υλών</p>
+                            <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Συνολικό Κόστος Λειτουργίας</p>
+                            <p class="text-3xl font-bold text-white tracking-tight tabular-nums" id="totalWeeklyCost">0.00 <span class="text-xl font-normal text-slate-400">€</span></p>
+                            <p class="text-xs text-slate-400 mt-1">Προσωπικό + Πάγια + Μ.Ο. Πρώτων Υλών</p>
                         </div>
 
-                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-                            <p class="text-sm text-slate-300 font-medium mb-1">Νεκρό Σημείο (Break-even)</p>
+                        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700">
+                            <p class="text-xs uppercase tracking-wider text-slate-300 font-semibold mb-1">Νεκρό Σημείο (Break-even)</p>
                             <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-emerald-400" id="breakEvenPoint">0.00 <span class="text-lg font-normal text-emerald-500/70">€</span></p>
+                                <p class="text-2xl font-bold text-emerald-400 tabular-nums" id="breakEvenPoint">0.00 <span class="text-lg font-normal text-emerald-500/70">€</span></p>
                             </div>
                             <p class="text-xs text-slate-400 mt-1">Απαιτούμενος τζίρος για μηδενικό κέρδος/ζημιά</p>
                         </div>
@@ -247,107 +302,107 @@
                 </div>
 
                 <!-- Κάρτα 4: Εικόνα Ημέρας -->
-                <div class="admin-only hidden bg-white rounded-xl shadow-md p-6 border border-gray-200 flex flex-col">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Εικόνα Ημέρας</h2>
+                <div class="admin-only hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6 flex flex-col">
+                    <h2 class="text-lg sm:text-xl font-bold mb-4 text-slate-900 border-b border-slate-100 pb-3">Εικόνα Ημέρας</h2>
                     
                     <div class="flex-grow flex flex-col justify-center space-y-5">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <p class="text-xs text-gray-600 font-medium mb-1">Καθαρός Τζίρος (άνευ ΦΠΑ)</p>
-                            <p class="text-lg font-bold text-gray-900" id="dailyNetRevenueDisplay">0.00 €</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
+                                <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Καθαρός Τζίρος (άνευ ΦΠΑ)</p>
+                                <p class="text-lg font-bold text-slate-900 tabular-nums" id="dailyNetRevenueDisplay">0.00 €</p>
+                            </div>
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
+                                <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Αναλογούντα Πάγια (Ημέρας)</p>
+                                <p class="text-lg font-bold text-slate-900 tabular-nums" id="dailyBurnRateDisplay">0.00 €</p>
+                            </div>
                         </div>
-                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <p class="text-xs text-gray-600 font-medium mb-1">Αναλογούντα Πάγια (Ημέρας)</p>
-                            <p class="text-lg font-bold text-gray-900" id="dailyBurnRateDisplay">0.00 €</p>
-                        </div>
-                    </div>
                         <div>
-                            <p class="text-sm text-gray-600 font-medium mb-1">Ημερήσιο Κόστος Λειτουργίας</p>
-                            <p class="text-3xl font-bold text-gray-900 tracking-tight" id="dailyOperatingCost">0.00 <span class="text-xl font-normal text-gray-500">€</span></p>
-                            <p class="text-xs text-gray-500 mt-1">Αναλογία Παγίων & Προσωπικού + Σημερινές Πρώτες Ύλες</p>
+                            <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Ημερήσιο Κόστος Λειτουργίας</p>
+                            <p class="text-3xl font-bold text-slate-900 tracking-tight tabular-nums" id="dailyOperatingCost">0.00 <span class="text-xl font-normal text-slate-500">€</span></p>
+                            <p class="text-xs text-slate-500 mt-1">Αναλογία Παγίων & Προσωπικού + Σημερινές Πρώτες Ύλες</p>
                         </div>
 
-                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                            <p class="text-sm text-indigo-800 font-medium mb-1">Νεκρό Σημείο Ημέρας</p>
+                        <div class="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100">
+                            <p class="text-xs uppercase tracking-wider text-indigo-800 font-semibold mb-1">Νεκρό Σημείο Ημέρας</p>
                             <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-indigo-700" id="dailyBreakEvenPoint">0.00 <span class="text-lg font-normal text-indigo-500">€</span></p>
+                                <p class="text-2xl font-bold text-indigo-700 tabular-nums" id="dailyBreakEvenPoint">0.00 <span class="text-lg font-normal text-indigo-500">€</span></p>
                             </div>
                             <p class="text-xs text-indigo-600 mt-1">Απαιτούμενος τζίρος για μηδενικό κέρδος (με ~30% Food Cost)</p>
                         </div>
 
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <p class="text-sm text-gray-600 font-medium mb-1">Καθαρό Κέρδος / Ζημιά Ημέρας</p>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                            <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Καθαρό Κέρδος / Ζημιά Ημέρας</p>
                             <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-gray-900" id="dailyNetProfit">0.00 <span class="text-lg font-normal text-gray-500">€</span></p>
+                                <p class="text-2xl font-bold text-slate-900 tabular-nums" id="dailyNetProfit">0.00 <span class="text-lg font-normal text-slate-500">€</span></p>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">Τζίρος - Ημερήσιο Κόστος</p>
+                            <p class="text-xs text-slate-500 mt-1">Τζίρος - Ημερήσιο Κόστος</p>
                         </div>
                     </div>
                 </div>
 
-            <!-- ⚙️ Ρυθμίσεις Καταστήματος -->
-            <div class="admin-only hidden mt-8 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">⚙️ Ρυθμίσεις Καταστήματος</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                        <label for="fixedOverheadsInput" class="block text-sm font-medium text-gray-700 mb-1">Μηνιαία Πάγια (Ενοίκιο, Ρεύμα, κτλ) σε €</label>
-                        <input type="number" id="fixedOverheadsInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none" min="0" step="0.01" placeholder="0">
+                <!-- ⚙️ Ρυθμίσεις Καταστήματος -->
+                <div class="admin-only hidden mt-2 lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold mb-4 text-slate-900 border-b border-slate-100 pb-3">⚙️ Ρυθμίσεις Καταστήματος</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label for="fixedOverheadsInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μηνιαία Πάγια (Ενοίκιο, Ρεύμα, κτλ) σε €</label>
+                            <input type="number" inputmode="decimal" id="fixedOverheadsInput" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums transition-all" min="0" step="0.01" placeholder="0">
+                        </div>
+                        <div>
+                            <label for="ownerInsuranceInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μηνιαίο ΤΕΒΕ / ΕΦΚΑ Ιδιοκτήτη σε €</label>
+                            <input type="number" inputmode="decimal" id="ownerInsuranceInput" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums transition-all" min="0" step="0.01" placeholder="0">
+                        </div>
+                        <div>
+                            <label for="vatRateInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μέσο Ποσοστό ΦΠΑ (%)</label>
+                            <input type="number" inputmode="decimal" id="vatRateInput" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums transition-all" min="0" step="0.1" placeholder="13">
+                        </div>
                     </div>
-                    <div>
-                        <label for="ownerInsuranceInput" class="block text-sm font-medium text-gray-700 mb-1">Μηνιαίο ΤΕΒΕ / ΕΦΚΑ Ιδιοκτήτη σε €</label>
-                        <input type="number" id="ownerInsuranceInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none" min="0" step="0.01" placeholder="0">
-                    </div>
-                    <div>
-                        <label for="vatRateInput" class="block text-sm font-medium text-gray-700 mb-1">Μέσο Ποσοστό ΦΠΑ (%)</label>
-                        <input type="number" id="vatRateInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none" min="0" step="0.1" placeholder="13">
-                    </div>
+                    <button id="saveSettingsBtn" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2.5 px-5 rounded-xl transition duration-200 ease-in-out shadow-sm text-sm">
+                        Αποθήκευση Ρυθμίσεων
+                    </button>
                 </div>
-                <button id="saveSettingsBtn" class="bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-sm">
-                    Αποθήκευση Ρυθμίσεων
-                </button>
-            </div>
 
-            <!-- 📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα -->
-            <div class="admin-only hidden mt-8 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα</h2>
-                <p class="text-sm text-gray-600 mb-4">Καταχωρήστε συνοπτικά τα δεδομένα ενός παλιού μήνα (απευθείας στη Σύνοψη), χωρίς να χρειάζεται να περάσετε τα ταμεία μέρα-μέρα.</p>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Μήνας</label>
-                        <select id="quickImportMonth" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none">
-                            <option value="1">Ιανουάριος</option><option value="2">Φεβρουάριος</option><option value="3">Μάρτιος</option>
-                            <option value="4">Απρίλιος</option><option value="5">Μάιος</option><option value="6">Ιούνιος</option>
-                            <option value="7">Ιούλιος</option><option value="8">Αύγουστος</option><option value="9">Σεπτέμβριος</option>
-                            <option value="10">Οκτώβριος</option><option value="11">Νοέμβριος</option><option value="12">Δεκέμβριος</option>
-                        </select>
+                <!-- 📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα -->
+                <div class="admin-only hidden mt-2 lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6">
+                    <h2 class="text-lg sm:text-xl font-bold mb-2 text-slate-900 border-b border-slate-100 pb-3">📅 Ιστορικό: Γρήγορη Εισαγωγή Παλιού Μήνα</h2>
+                    <p class="text-xs sm:text-sm text-slate-600 mb-4">Καταχωρήστε συνοπτικά τα δεδομένα ενός παλιού μήνα (απευθείας στη Σύνοψη), χωρίς να χρειάζεται να περάσετε τα ταμεία μέρα-μέρα.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μήνας</label>
+                            <select id="quickImportMonth" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                                <option value="1">Ιανουάριος</option><option value="2">Φεβρουάριος</option><option value="3">Μάρτιος</option>
+                                <option value="4">Απρίλιος</option><option value="5">Μάιος</option><option value="6">Ιούνιος</option>
+                                <option value="7">Ιούλιος</option><option value="8">Αύγουστος</option><option value="9">Σεπτέμβριος</option>
+                                <option value="10">Οκτώβριος</option><option value="11">Νοέμβριος</option><option value="12">Δεκέμβριος</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Έτος</label>
+                            <input type="number" inputmode="numeric" id="quickImportYear" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white outline-none tabular-nums" value="2026">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μικτός Τζίρος (€)</label>
+                            <input type="number" inputmode="decimal" id="quickImportRev" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white outline-none tabular-nums" min="0" step="0.01" placeholder="π.χ. 15000">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Έξοδα Υλικών/Λογαρ. (€)</label>
+                            <input type="number" inputmode="decimal" id="quickImportExp" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white outline-none tabular-nums" min="0" step="0.01" placeholder="π.χ. 5000">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Μεροκάματα (€)</label>
+                            <input type="number" inputmode="decimal" id="quickImportWages" class="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white outline-none tabular-nums" min="0" step="0.01" placeholder="π.χ. 3000">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Έτος</label>
-                        <input type="number" id="quickImportYear" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" value="2026">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Μικτός Τζίρος (€)</label>
-                        <input type="number" id="quickImportRev" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 15000">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Έξοδα Υλικών/Λογαρ. (€)</label>
-                        <input type="number" id="quickImportExp" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 5000">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Μεροκάματα (€)</label>
-                        <input type="number" id="quickImportWages" class="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none" min="0" step="0.01" placeholder="π.χ. 3000">
-                    </div>
+                    <button id="quickImportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-5 rounded-xl transition duration-200 ease-in-out shadow-sm text-sm">
+                        Αποθήκευση Μήνα
+                    </button>
                 </div>
-                <button id="quickImportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-sm">
-                    Αποθήκευση Μήνα
-                </button>
-            </div>
             </div>
 
             <!-- Κάρτα 5: Γράφημα -->
-            <div class="admin-only hidden mt-8 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Καμπύλη Food Cost (Μήνα/Εβδομάδας)</h2>
+            <div class="admin-only hidden mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6">
+                <h2 class="text-lg sm:text-xl font-bold mb-4 text-slate-900 border-b border-slate-100 pb-3">Καμπύλη Food Cost (Μήνα/Εβδομάδας)</h2>
                 <div class="relative h-64 w-full">
                     <canvas id="foodCostChart"></canvas>
                 </div>
@@ -356,320 +411,348 @@
 
         <!-- Monthly Report View -->
         <div id="monthlyReportView" class="hidden">
-            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-                <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <h2 class="text-2xl font-semibold text-gray-800">Σύνοψη Μήνα: <span id="reportMonthDisplay" class="text-primary"></span></h2>
-                    <button id="fetchReportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-sm">
+            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-4 sm:p-6">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+                    <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Σύνοψη Μήνα: <span id="reportMonthDisplay" class="text-primary"></span></h2>
+                    <button id="fetchReportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition duration-200 ease-in-out shadow-sm text-xs sm:text-sm">
                         Ανανέωση Δεδομένων
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                     <!-- Έσοδα -->
-                    <div class="bg-green-50 rounded-xl p-6 border border-green-100 flex flex-col items-center justify-center">
-                        <p class="text-sm text-green-600 font-medium mb-2 uppercase tracking-wide">Συνολικά Έσοδα</p>
-                        <p class="text-4xl font-bold text-green-700" id="reportTotalRevenue">0.00 €</p>
-                    <p class="text-xs text-green-600 mt-2 font-medium" id="reportNetRevenueDisplay">Καθαρός Τζίρος (άνευ ΦΠΑ): 0.00 €</p>
+                    <div class="bg-emerald-50/70 rounded-2xl p-5 border border-emerald-200/70 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-emerald-700 font-semibold mb-2 uppercase tracking-wider">Συνολικά Έσοδα</p>
+                        <p class="text-3xl sm:text-4xl font-bold text-emerald-700 tabular-nums" id="reportTotalRevenue">0.00 €</p>
+                        <p class="text-xs text-emerald-600 mt-2 font-medium tabular-nums" id="reportNetRevenueDisplay">Καθαρός Τζίρος (άνευ ΦΠΑ): 0.00 €</p>
                     </div>
                     
                     <!-- Έξοδα -->
-                    <div class="bg-red-50 rounded-xl p-6 border border-red-100 flex flex-col items-center justify-center text-center">
-                        <p class="text-sm text-red-600 font-medium mb-2 uppercase tracking-wide">Αναλυτικά Έξοδα<br><span class="text-xs normal-case opacity-80">(από ημερήσια)</span></p>
-                        <p class="text-4xl font-bold text-red-700" id="reportTotalExpenses">0.00 €</p>
+                    <div class="bg-rose-50/70 rounded-2xl p-5 border border-rose-200/70 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-rose-700 font-semibold mb-2 uppercase tracking-wider">Αναλυτικά Έξοδα<br><span class="text-[11px] normal-case opacity-80">(από ημερήσια)</span></p>
+                        <p class="text-3xl sm:text-4xl font-bold text-rose-700 tabular-nums" id="reportTotalExpenses">0.00 €</p>
                     </div>
                     
                     <!-- Food Cost -->
-                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 flex flex-col items-center justify-center text-center">
-                        <p class="text-sm text-gray-600 font-medium mb-2 uppercase tracking-wide">Food Cost Μήνα<br><span class="text-xs normal-case opacity-80">(Υλικά / Τζίρο)</span></p>
-                        <p class="text-4xl font-bold text-gray-400" id="reportAverageFoodCost">-%</p>
+                    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-slate-500 font-semibold mb-2 uppercase tracking-wider">Food Cost Μήνα<br><span class="text-[11px] normal-case opacity-80">(Υλικά / Τζίρο)</span></p>
+                        <p class="text-3xl sm:text-4xl font-bold text-slate-400 tabular-nums" id="reportAverageFoodCost">-%</p>
                     </div>
                     
                     <!-- Μέσος Ημερήσιος Τζίρος -->
-                    <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200 flex flex-col items-center justify-center text-center">
-                        <div class="flex items-center gap-2">
-                            <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Μεσος Ημερησιος Τζιρος</p>
-                            <span class="text-gray-400 cursor-pointer" title="Ο συνολικός τζίρος του μήνα, διαιρεμένος με τον αριθμό των ημερών που έχουν καταγραφεί ταμεία.">ℹ️</span>
+                    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 flex flex-col items-center justify-center text-center">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Μέσος Ημερήσιος Τζίρος</p>
+                            <span class="text-slate-400 cursor-pointer text-xs" title="Ο συνολικός τζίρος του μήνα, διαιρεμένος με τον αριθμό των ημερών που έχουν καταγραφεί ταμεία.">ℹ️</span>
                         </div>
-                        <p id="reportAverageDailyRevenue" class="text-4xl font-bold text-gray-700 mt-2">0,00 €</p>
+                        <p id="reportAverageDailyRevenue" class="text-3xl sm:text-4xl font-bold text-slate-800 tabular-nums">0,00 €</p>
                     </div>
 
                     <!-- Πάγια -->
-                    <div class="bg-orange-50 rounded-xl p-6 border border-orange-100 flex flex-col items-center justify-center text-center">
-                        <p class="text-sm text-orange-600 font-medium mb-2 uppercase tracking-wide">Αναλογικά Πάγια<br><span class="text-xs normal-case opacity-80">(έως σήμερα)</span></p>
-                        <p class="text-4xl font-bold text-orange-700" id="reportFixedCosts">0.00 €</p>
+                    <div class="bg-amber-50/70 rounded-2xl p-5 border border-amber-200/70 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-amber-800 font-semibold mb-2 uppercase tracking-wider">Αναλογικά Πάγια<br><span class="text-[11px] normal-case opacity-80">(έως σήμερα)</span></p>
+                        <p class="text-3xl sm:text-4xl font-bold text-amber-700 tabular-nums" id="reportFixedCosts">0.00 €</p>
                     </div>
                     
                     <!-- Κέρδος/Ζημιά -->
-                    <div class="bg-blue-50 rounded-xl p-6 border border-blue-100 flex flex-col items-center justify-center">
-                        <p class="text-sm text-blue-600 font-medium mb-2 uppercase tracking-wide">Καθαρό Κέρδος</p>
-                        <p class="text-4xl font-bold text-blue-700" id="reportNetProfit">0.00 €</p>
-                        <p class="text-[10px] text-blue-500 mt-2 text-center leading-tight">Καθαρός Τζίρος - Έξοδα - Μεροκάματα - Πάγια<br>(Δεν έχει αφαιρεθεί το ΙΚΑ)</p>
+                    <div class="bg-blue-50/70 rounded-2xl p-5 border border-blue-200/70 shadow-sm flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-blue-700 font-semibold mb-2 uppercase tracking-wider">Καθαρό Κέρδος</p>
+                        <p class="text-3xl sm:text-4xl font-bold text-blue-700 tabular-nums" id="reportNetProfit">0.00 €</p>
+                        <p class="text-[11px] text-blue-600/80 mt-2 text-center leading-tight">Καθαρός Τζίρος - Έξοδα - Μεροκάματα - Πάγια<br>(Δεν έχει αφαιρεθεί το ΙΚΑ)</p>
                     </div>
                 </div>
 
                 <!-- 🔮 Πρόβλεψη Τέλους Μήνα -->
-                <div class="mt-6 bg-purple-50 rounded-xl p-6 border border-purple-200 flex flex-col md:flex-row items-center justify-between shadow-sm">
+                <div class="mt-6 bg-purple-50/80 rounded-2xl p-5 sm:p-6 border border-purple-200/80 flex flex-col md:flex-row items-center justify-between shadow-sm">
                     <div>
-                        <p class="text-lg text-purple-700 font-bold mb-1 uppercase tracking-wide">🔮 Πρόβλεψη Τέλους Μήνα</p>
-                        <p class="text-sm text-purple-600 normal-case">Εκτιμώμενο Κέρδος με βάση τον μέσο όρο των ημερών που έχουν καταγραφεί.</p>
+                        <p class="text-base sm:text-lg text-purple-800 font-bold mb-1 uppercase tracking-wide">🔮 Πρόβλεψη Τέλους Μήνα</p>
+                        <p class="text-xs sm:text-sm text-purple-700 normal-case">Εκτιμώμενο Κέρδος με βάση τον μέσο όρο των ημερών που έχουν καταγραφεί.</p>
                     </div>
-                    <p class="text-4xl font-bold mt-4 md:mt-0" id="reportForecastProfit">0.00 €</p>
+                    <p class="text-3xl sm:text-4xl font-bold mt-4 md:mt-0 tabular-nums" id="reportForecastProfit">0.00 €</p>
                 </div>
 
                 <!-- 🏦 Προβλέψεις Οφειλών (Κουμπαράς) -->
-                <div class="mt-6 bg-orange-50 rounded-xl p-6 border border-orange-200 flex flex-col md:flex-row items-center justify-between shadow-sm">
+                <div class="mt-6 bg-amber-50/80 rounded-2xl p-5 sm:p-6 border border-amber-200/80 flex flex-col md:flex-row items-center justify-between shadow-sm">
                     <div>
-                        <p class="text-lg text-orange-800 font-bold mb-1 uppercase tracking-wide">🏦 Προβλέψεις Οφειλών (Κουμπαράς)</p>
-                        <p class="text-sm text-orange-700 normal-case">Ποσά που πρέπει να κρατηθούν για μελλοντικές πληρωμές φόρων και ασφαλιστικών εισφορών.</p>
+                        <p class="text-base sm:text-lg text-amber-900 font-bold mb-1 uppercase tracking-wide">🏦 Προβλέψεις Οφειλών (Κουμπαράς)</p>
+                        <p class="text-xs sm:text-sm text-amber-800 normal-case">Ποσά που πρέπει να κρατηθούν για μελλοντικές πληρωμές φόρων και ασφαλιστικών εισφορών.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-6 mt-4 md:mt-0 text-right md:text-center">
                         <div>
-                            <p class="text-sm text-orange-700 font-medium">ΦΠΑ προς απόδοση</p>
-                            <p class="text-2xl font-bold text-red-600" id="reportVatProvision">0.00 €</p>
+                            <p class="text-xs uppercase tracking-wider text-amber-800 font-semibold">ΦΠΑ προς απόδοση</p>
+                            <p class="text-2xl font-bold text-rose-600 tabular-nums mt-0.5" id="reportVatProvision">0.00 €</p>
                         </div>
                         <div>
-                            <p class="text-sm text-orange-700 font-medium">Εκτιμώμενο ΙΚΑ/ΕΦΚΑ</p>
-                            <p class="text-2xl font-bold text-red-600" id="reportIkaProvision">0.00 €</p>
+                            <p class="text-xs uppercase tracking-wider text-amber-800 font-semibold">Εκτιμώμενο ΙΚΑ/ΕΦΚΑ</p>
+                            <p class="text-2xl font-bold text-rose-600 tabular-nums mt-0.5" id="reportIkaProvision">0.00 €</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- 📊 Γράφημα Πορείας Εσόδων vs Εξόδων -->
-                <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 uppercase tracking-wide">📊 Πορεία Εσόδων vs Εξόδων</h3>
+                <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden p-5 sm:p-6">
+                    <h3 class="text-base sm:text-lg font-bold text-slate-800 mb-4 uppercase tracking-wider">📊 Πορεία Εσόδων vs Εξόδων</h3>
                     <div class="relative w-full h-[300px]">
                         <canvas id="monthlyChart"></canvas>
                     </div>
                 </div>
 
                 <!-- Λίστα Αναλυτικών Ταμείων -->
-                <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <h3 class="text-lg font-semibold text-gray-800 bg-gray-50 px-6 py-4 border-b">Αναλυτικά Ταμεία Μήνα</h3>
-                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                <div class="mt-8 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+                    <h3 class="text-base sm:text-lg font-bold text-slate-800 bg-slate-50/80 px-5 sm:px-6 py-4 border-b border-slate-200/80">Αναλυτικά Ταμεία Μήνα</h3>
+                    <div class="hidden md:block overflow-x-auto max-h-[520px] overflow-y-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider">
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100">Ημερομηνία</th>
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100">Τζίρος</th>
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100">Έξοδα</th>
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100">Μεροκάματα</th>
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100">Food Cost</th>
-                                    <th class="px-6 py-3 font-medium border-b sticky top-0 bg-gray-100 text-center">Ενέργειες</th>
+                                <tr class="bg-slate-100/90 text-slate-600 text-xs uppercase tracking-wider">
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100">Ημερομηνία</th>
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100">Τζίρος</th>
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100">Έξοδα</th>
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100">Μεροκάματα</th>
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100">Food Cost</th>
+                                    <th class="px-4 sm:px-6 py-3 font-semibold border-b border-slate-200 sticky top-0 bg-slate-100 text-center">Ενέργειες</th>
                                 </tr>
                             </thead>
-                            <tbody id="monthlyRecordsList" class="divide-y divide-gray-100">
+                            <tbody id="monthlyRecordsList" class="divide-y divide-slate-100 tabular-nums">
                                 <!-- Εγγραφές από app.js -->
                             </tbody>
                         </table>
                     </div>
+                    <div id="monthlyMobileCards" class="md:hidden space-y-3 p-3.5 sm:p-4 bg-slate-50/50"></div>
                 </div>
 
-                <div class="mt-8 text-center border-t border-gray-200 pt-6">
+                <div class="mt-8 text-center border-t border-slate-200/80 pt-6">
                     <div id="closeMonthOptions" class="inline-flex items-center gap-2 mb-4 cursor-pointer">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="clearDataCheckbox" class="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary">
-                            <span class="text-sm text-gray-700 font-medium">Διαγραφή αναλυτικών ημερήσιων δεδομένων (για εξοικονόμηση χώρου)</span>
+                        <label class="flex items-center gap-2.5 cursor-pointer text-left">
+                            <input type="checkbox" id="clearDataCheckbox" class="w-5 h-5 flex-shrink-0 text-primary rounded border-slate-300 focus:ring-primary">
+                            <span class="text-sm text-slate-700 font-medium">Διαγραφή αναλυτικών ημερήσιων δεδομένων (για εξοικονόμηση χώρου)</span>
                         </label>
                     </div>
                     <br>
-                    <button id="closeMonthBtn" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-lg">
+                    <button id="closeMonthBtn" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-base sm:text-lg">
                         Οριστικό Κλείσιμο Μήνα
                     </button>
-                    <button id="reopenMonthBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-lg ml-2">
+                    <button id="reopenMonthBtn" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 px-8 rounded-xl transition duration-200 ease-in-out shadow-md text-base sm:text-lg ml-2">
                         🔓 Ακύρωση Κλεισίματος
                     </button>
-                    <p id="closeMonthDesc" class="text-xs text-gray-500 mt-2">Αποθηκεύει τα τρέχοντα αποτελέσματα μόνιμα στη βάση δεδομένων.</p>
+                    <p id="closeMonthDesc" class="text-xs text-slate-500 mt-2">Αποθηκεύει τα τρέχοντα αποτελέσματα μόνιμα στη βάση δεδομένων.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Day Action Modal (Επιλογή Ενέργειας Ημέρας) -->
-    <div id="dayActionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[55]">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs mx-4">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="text-xl font-bold text-gray-800">Επιλογή</h3>
-                <button id="closeDayActionModalBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+    <!-- Day Action Modal (Επιλογή Ενέργειας Ημέρας - Mobile Bottom Sheet) -->
+    <div id="dayActionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-end sm:items-center justify-center p-0 sm:p-4 z-[55]">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-2.5 mb-1 sm:hidden"></div>
+            <div class="flex justify-between items-center px-5 pt-3 pb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-slate-900">Επιλογή Ενέργειας</h3>
+                    <p class="text-xs text-slate-500">Τι θέλετε να καταχωρήσετε για αυτή την ημέρα;</p>
+                </div>
+                <button id="closeDayActionModalBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <div class="flex flex-col gap-3">
-                <button id="actionExpensesBtn" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 px-4 rounded-lg transition-colors border border-orange-200 shadow-sm flex items-center justify-center gap-2">
-                    <span class="text-xl">💸</span> Προσθήκη Εξόδων
+            <div class="p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-3.5 overflow-y-auto">
+                <button id="actionExpensesBtn" class="w-full bg-amber-50/70 hover:bg-amber-100/80 active:scale-[0.99] text-left p-4 rounded-2xl transition-all border border-amber-200/80 shadow-sm flex items-center gap-4 group">
+                    <span class="w-12 h-12 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">💸</span>
+                    <div class="flex-1 min-w-0">
+                        <span class="block text-base font-bold text-amber-900">Προσθήκη Εξόδων</span>
+                        <span class="block text-xs text-amber-700/80 mt-0.5">Γρήγορη καταχώρηση τιμολογίων, πρώτων υλών ή λογαριασμών</span>
+                    </div>
+                    <span class="text-amber-400 group-hover:translate-x-0.5 transition-transform text-lg font-bold">&rarr;</span>
                 </button>
-                <button id="actionClosureBtn" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 px-4 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center justify-center gap-2">
-                    <span class="text-xl">📊</span> Κλείσιμο Ταμείου
+                <button id="actionClosureBtn" class="w-full bg-blue-50/70 hover:bg-blue-100/80 active:scale-[0.99] text-left p-4 rounded-2xl transition-all border border-blue-200/80 shadow-sm flex items-center gap-4 group">
+                    <span class="w-12 h-12 rounded-xl bg-blue-600/15 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">📊</span>
+                    <div class="flex-1 min-w-0">
+                        <span class="block text-base font-bold text-blue-900">Κλείσιμο Ταμείου</span>
+                        <span class="block text-xs text-blue-700/80 mt-0.5">Πλήρες κλείσιμο βάρδιας, βάρδιες προσωπικού, POS, μετρητά & Ζ</span>
+                    </div>
+                    <span class="text-blue-400 group-hover:translate-x-0.5 transition-transform text-lg font-bold">&rarr;</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal (Κρυφό από προεπιλογή) -->
-    <div id="dayModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 transform transition-all max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 id="modalDateDisplay" class="text-xl font-bold text-gray-800">Ημερομηνία</h3>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+    <!-- Day Modal (Κρυφό από προεπιλογή - Mobile Bottom Sheet + Sticky Footer) -->
+    <div id="dayModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl transform transition-all">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-2.5 mb-1 sm:hidden flex-shrink-0"></div>
+            <!-- Fixed Header -->
+            <div class="flex justify-between items-center px-4 sm:px-6 pt-3 pb-3 border-b border-slate-100 flex-shrink-0">
+                <h3 id="modalDateDisplay" class="text-lg sm:text-xl font-bold text-slate-900">Ημερομηνία</h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <div id="modalContent" class="space-y-4">
-                <!-- Βάρδιες Ημέρας (Placeholder) -->
+            <!-- Scrollable Form Body -->
+            <div id="modalContent" class="overflow-y-auto flex-1 px-4 sm:px-6 py-4 space-y-5">
+                <!-- Βάρδιες Ημέρας -->
                 <div id="modalShiftsSection">
-                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-1 mb-2">Βάρδιες Ημέρας</h4>
-                    <ul id="modalShiftsList" class="text-sm text-gray-600 space-y-1 bg-gray-50 p-2 rounded border border-gray-100">
-                        <li class="italic text-gray-400">Αναμονή δεδομένων...</li>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5 mb-2.5">Βάρδιες Ημέρας</h4>
+                    <ul id="modalShiftsList" class="text-sm text-slate-700 space-y-2.5">
+                        <li class="italic text-slate-400">Αναμονή δεδομένων...</li>
                     </ul>
                 </div>
 
                 <!-- Έξοδα Ημέρας -->
                 <div>
-                    <h4 class="text-sm font-semibold text-gray-700 border-b pb-1 mb-2">Έξοδα Ημέρας</h4>
-                    <div class="flex flex-wrap gap-2 mb-3">
-                        <input type="text" id="expenseDescInput" placeholder="Περιγραφή (π.χ. Κρέατα, ΔΕΗ)" class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none min-w-[100px]">
-                        <select id="expenseCategoryInput" class="w-auto px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none bg-white">
-                            <option value="agatho">Αγαθό</option>
-                            <option value="logariasmos">Λογαριασμός</option>
-                            <option value="ylika">Υλικά</option>
-                        </select>
-                        <input type="number" id="expenseAmountInput" placeholder="Ποσό (€)" class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none" min="0" step="0.01">
-                        <label class="flex items-center gap-1 text-xs text-gray-600 whitespace-nowrap cursor-pointer">
-                            <input type="checkbox" id="modalExpensePaidFromDrawer" checked class="text-primary rounded border-gray-300 focus:ring-primary">
-                            Από Ταμείο
-                        </label>
-                        <button type="button" id="addExpenseBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded text-lg leading-none transition-colors">+</button>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5 mb-2.5">Έξοδα Ημέρας</h4>
+                    <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 mb-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="text" id="expenseDescInput" placeholder="Περιγραφή (π.χ. Κρέατα, ΔΕΗ)" class="w-full sm:flex-1 px-3 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none min-w-[120px]">
+                            <select id="expenseCategoryInput" class="flex-1 sm:flex-none sm:w-auto px-2.5 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                                <option value="agatho">Αγαθό</option>
+                                <option value="logariasmos">Λογαριασμός</option>
+                                <option value="ylika">Υλικά</option>
+                            </select>
+                            <input type="number" inputmode="decimal" id="expenseAmountInput" placeholder="Ποσό (€)" class="w-28 px-3 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums" min="0" step="0.01">
+                        </div>
+                        <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60">
+                            <label class="flex items-center gap-2 text-xs font-medium text-slate-600 whitespace-nowrap cursor-pointer min-h-[36px]">
+                                <input type="checkbox" id="modalExpensePaidFromDrawer" checked class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary">
+                                Πληρώθηκε από το Ταμείο
+                            </label>
+                            <button type="button" id="addExpenseBtn" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold min-h-[38px] px-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-1 shadow-sm">
+                                <span class="text-base leading-none">+</span> Προσθήκη
+                            </button>
+                        </div>
                     </div>
-                    <ul id="modalExpensesList" class="text-sm space-y-2 max-h-32 overflow-y-auto pr-1">
+                    <ul id="modalExpensesList" class="text-sm space-y-2 max-h-40 overflow-y-auto pr-1">
                         <!-- Εδώ θα μπαίνουν τα έξοδα -->
                     </ul>
-                    <div class="text-right text-sm font-semibold text-gray-800 mt-3 pt-2 border-t border-gray-100">
-                        Σύνολο Εξόδων: <span id="modalTotalExpensesDisplay" class="text-red-500">0,00 €</span>
+                    <div class="text-right text-sm font-semibold text-slate-800 mt-3 pt-2 border-t border-slate-100 tabular-nums">
+                        Σύνολο Εξόδων: <span id="modalTotalExpensesDisplay" class="text-rose-600 font-bold">0,00 €</span>
                     </div>
                 </div>
 
                 <!-- Τζίρος -->
-                <div id="modalRevenueSection" class="pt-4 border-t border-gray-200">
-                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Τζίρος & Ταμειακή Συμφωνία</h4>
+                <div id="modalRevenueSection" class="pt-4 border-t border-slate-200/80">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Τζίρος & Ταμειακή Συμφωνία</h4>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div>
-                            <label for="posTotal" class="block text-sm font-medium text-gray-700 mb-1">Τζίρος Κάρτας POS (€)</label>
-                            <input type="number" id="posTotal" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
+                            <label for="posTotal" class="block text-xs font-semibold text-slate-700 mb-1">Τζίρος Κάρτας POS (€)</label>
+                            <input type="number" inputmode="decimal" id="posTotal" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tabular-nums" placeholder="0" min="0" step="0.01">
                         </div>
                         <div>
-                            <label for="drawerCash" class="block text-sm font-medium text-gray-700 mb-1">Μετρητά στο Συρτάρι (€)</label>
-                            <input type="number" id="drawerCash" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="0" min="0" step="0.01">
+                            <label for="drawerCash" class="block text-xs font-semibold text-slate-700 mb-1">Μετρητά στο Συρτάρι (€)</label>
+                            <input type="number" inputmode="decimal" id="drawerCash" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tabular-nums" placeholder="0" min="0" step="0.01">
                         </div>
                     </div>
-                    <div class="mb-4">
-                        <label for="zReceipt" class="block text-sm font-medium text-gray-700 mb-1">Αναφορά "Ζ" Ταμειακής (€) <span class="text-xs text-gray-500 font-normal">(Προαιρετικό)</span></label>
-                        <input type="number" id="zReceipt" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-1" placeholder="0" min="0" step="0.01">
-                        <div id="modalDrawerStatus" class="text-sm font-medium p-2 rounded hidden"></div>
+                    <div class="mb-3">
+                        <label for="zReceipt" class="block text-xs font-semibold text-slate-700 mb-1">Αναφορά "Ζ" Ταμειακής (€) <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
+                        <input type="number" inputmode="decimal" id="zReceipt" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary mb-2 tabular-nums" placeholder="0" min="0" step="0.01">
+                        <div id="modalDrawerStatus" class="text-sm font-semibold px-3.5 py-2.5 rounded-xl hidden"></div>
                     </div>
                     
-                    <div class="mb-2">
-                        <label for="modalCashierName" class="block text-sm font-medium text-gray-700 mb-1">Όνομα Ταμία <span class="text-xs text-gray-500 font-normal">(Προαιρετικό)</span></label>
-                        <input type="text" id="modalCashierName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="π.χ. Γιάννης">
+                    <div class="mb-1">
+                        <label for="modalCashierName" class="block text-xs font-semibold text-slate-700 mb-1">Όνομα Ταμία <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
+                        <input type="text" id="modalCashierName" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="π.χ. Γιάννης">
                     </div>
                 </div>
-                
-                <!-- Κουμπί Αποθήκευσης (Ανεξάρτητο για να φαίνεται πάντα) -->
-                <button id="saveModalDayBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 ease-in-out shadow-sm text-lg mt-4">
+            </div>
+            <!-- Sticky Footer Αποθήκευσης -->
+            <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-100 px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex-shrink-0">
+                <button id="saveModalDayBtn" class="w-full bg-primary hover:bg-blue-700 text-white py-3.5 px-4 rounded-xl font-semibold text-base shadow-md active:scale-[0.99] transition">
                     Αποθήκευση Ημέρας
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Edit Record Modal (Κρυφό από προεπιλογή) -->
-    <div id="editRecordModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 transform transition-all max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="text-xl font-bold text-gray-800">Επεξεργασία Ημέρας <span id="editModalDateDisplay" class="text-sm font-normal text-gray-500 ml-2"></span></h3>
-                <button id="closeEditModalIconBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+    <!-- Edit Record Modal (Κρυφό από προεπιλογή - Mobile Bottom Sheet + Sticky Footer) -->
+    <div id="editRecordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl transform transition-all">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-2.5 mb-1 sm:hidden flex-shrink-0"></div>
+            <!-- Fixed Header -->
+            <div class="flex justify-between items-center px-4 sm:px-6 pt-3 pb-3 border-b border-slate-100 flex-shrink-0">
+                <h3 class="text-lg sm:text-xl font-bold text-slate-900">Επεξεργασία Ημέρας <span id="editModalDateDisplay" class="text-sm font-normal text-slate-500 ml-1"></span></h3>
+                <button id="closeEditModalIconBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
             
-            <div class="space-y-4">
+            <!-- Scrollable Form Body -->
+            <div class="overflow-y-auto flex-1 px-4 sm:px-6 py-4 space-y-4">
                 <!-- Τζίρος -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label for="editModalPosRevenue" class="block text-sm font-medium text-gray-700 mb-1">Τζίρος POS (€)</label>
-                        <input type="number" id="editModalPosRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" min="0" step="0.01">
+                        <label for="editModalPosRevenue" class="block text-xs font-semibold text-slate-700 mb-1">Τζίρος POS (€)</label>
+                        <input type="number" inputmode="decimal" id="editModalPosRevenue" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tabular-nums" min="0" step="0.01">
                     </div>
                     <div>
-                        <label for="editModalCashRevenue" class="block text-sm font-medium text-gray-700 mb-1">Τζίρος Μετρητά (€)</label>
-                        <input type="number" id="editModalCashRevenue" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" min="0" step="0.01">
+                        <label for="editModalCashRevenue" class="block text-xs font-semibold text-slate-700 mb-1">Τζίρος Μετρητά (€)</label>
+                        <input type="number" inputmode="decimal" id="editModalCashRevenue" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tabular-nums" min="0" step="0.01">
                     </div>
                 </div>
                 
                 <!-- Έξοδα -->
-                <div class="col-span-1 sm:col-span-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <h4 class="font-semibold text-gray-800 mb-2 text-sm">Αναλυτικά Έξοδα</h4>
+                <div class="col-span-1 sm:col-span-2 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80">
+                    <h4 class="font-semibold text-slate-800 mb-2.5 text-xs uppercase tracking-wider">Αναλυτικά Έξοδα</h4>
                     <div class="flex flex-col gap-2 mb-2">
-                        <input type="text" id="editExpenseDescInput" placeholder="Περιγραφή (π.χ. Ντομάτες)" class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none">
-                        <div class="flex flex-wrap sm:flex-nowrap gap-2">
-                            <select id="editExpenseCategoryInput" class="flex-grow px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none bg-white">
+                        <input type="text" id="editExpenseDescInput" placeholder="Περιγραφή (π.χ. Ντομάτες)" class="w-full px-3 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                        <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                            <select id="editExpenseCategoryInput" class="flex-grow px-2.5 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
                                 <option value="agatho">Αγαθό (Πρώτη Ύλη)</option>
                                 <option value="ylika">Υλικά (Συσκευασίες)</option>
                                 <option value="logariasmos">Λογαριασμός/Πάγιο</option>
                             </select>
-                            <input type="number" id="editExpenseAmountInput" placeholder="Ποσό (€)" class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none" min="0" step="0.01">
-                            <button type="button" id="addEditExpenseBtn" class="bg-primary hover:bg-blue-700 text-white px-3 py-1.5 rounded shadow transition-colors font-bold text-sm">✚</button>
+                            <input type="number" inputmode="decimal" id="editExpenseAmountInput" placeholder="Ποσό (€)" class="w-28 px-3 py-2 text-base sm:text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums" min="0" step="0.01">
+                            <button type="button" id="addEditExpenseBtn" class="bg-primary hover:bg-blue-700 text-white min-w-[42px] min-h-[42px] sm:min-h-[38px] px-3.5 py-1.5 rounded-xl shadow-sm transition-colors font-bold text-sm flex items-center justify-center">✚</button>
                         </div>
                         <label class="flex items-center gap-2 cursor-pointer mt-1">
-                            <input type="checkbox" id="editExpensePaidFromDrawer" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" checked>
-                            <span class="text-xs text-gray-600">Πληρώθηκε από το Ταμείο</span>
+                            <input type="checkbox" id="editExpensePaidFromDrawer" class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" checked>
+                            <span class="text-xs font-medium text-slate-600">Πληρώθηκε από το Ταμείο</span>
                         </label>
                     </div>
-                    <ul id="editModalExpensesList" class="flex flex-col gap-1 mt-2 mb-2 text-sm max-h-32 overflow-y-auto"></ul>
-                    <div class="flex justify-between items-center pt-2 border-t border-gray-300 font-bold text-gray-800 text-sm">
+                    <ul id="editModalExpensesList" class="flex flex-col gap-1.5 mt-2 mb-2 text-sm max-h-36 overflow-y-auto"></ul>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-200/80 font-bold text-slate-800 text-sm tabular-nums">
                         <span>Σύνολο Εξόδων:</span>
-                        <span id="editModalTotalExpensesDisplay" class="text-red-600">0,00 €</span>
+                        <span id="editModalTotalExpensesDisplay" class="text-rose-600">0,00 €</span>
                     </div>
                 </div>
                 
                 <!-- Προσωπικό -->
                 <div>
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Προσωπικό που εργάστηκε</h4>
-                    <div id="editModalEmployeesList" class="space-y-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Προσωπικό που εργάστηκε</h4>
+                    <div id="editModalEmployeesList" class="space-y-2 max-h-40 overflow-y-auto bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
                         <!-- Εδώ θα μπαίνουν τα checkboxes με JavaScript -->
                     </div>
                 </div>
                 
                 <!-- Ταμίας -->
                 <div>
-                    <label for="editModalCashierName" class="block text-sm font-medium text-gray-700 mb-1">Όνομα Ταμία <span class="text-xs text-gray-500 font-normal">(Προαιρετικό)</span></label>
-                    <input type="text" id="editModalCashierName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="π.χ. Γιάννης">
+                    <label for="editModalCashierName" class="block text-xs font-semibold text-slate-700 mb-1">Όνομα Ταμία <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
+                    <input type="text" id="editModalCashierName" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="π.χ. Γιάννης">
                 </div>
-                
-                <!-- Κουμπιά -->
-                <div class="pt-4 border-t border-gray-200 flex justify-end gap-3">
-                    <button id="closeEditModalBtn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors text-sm">Ακύρωση</button>
-                    <button id="saveEditModalBtn" class="px-4 py-2 bg-primary hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm">Αποθήκευση Αλλαγών</button>
-                </div>
+            </div>
+
+            <!-- Sticky Footer Αποθήκευσης -->
+            <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-100 px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col-reverse sm:flex-row justify-end gap-2.5 flex-shrink-0">
+                <button id="closeEditModalBtn" class="w-full sm:w-auto px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors text-sm">Ακύρωση</button>
+                <button id="saveEditModalBtn" class="w-full py-3.5 px-5 bg-primary hover:bg-blue-700 text-white rounded-xl font-semibold text-base shadow-md active:scale-[0.99] transition">Αποθήκευση Αλλαγών</button>
             </div>
         </div>
     </div>
 
     <!-- Set PIN Modal (Υποχρεωτικό για νέους χρήστες) -->
-    <div id="setPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
-        <form onsubmit="return false;" class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Ορισμός PIN Ιδιοκτήτη</h3>
-            <p class="text-sm text-gray-600 mb-4">Για την προστασία των δεδομένων σας, παρακαλώ ορίστε ένα νέο PIN.</p>
+    <div id="setPinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-center justify-center z-[60]">
+        <form onsubmit="return false;" class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 max-h-[90vh] max-h-[90dvh] overflow-y-auto border border-slate-200/80">
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Ορισμός PIN Ιδιοκτήτη</h3>
+            <p class="text-sm text-slate-600 mb-4">Για την προστασία των δεδομένων σας, παρακαλώ ορίστε ένα νέο PIN.</p>
             <!-- Κρυφό πεδίο username για προσβασιμότητα -->
             <input type="text" autocomplete="username" value="owner" class="hidden" aria-hidden="true">
-            <input type="password" id="newPinInput" autocomplete="new-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
-            <button type="button" id="saveSetPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Αποθήκευση PIN</button>
+            <input type="password" inputmode="numeric" pattern="[0-9]*" id="newPinInput" autocomplete="new-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button type="button" id="saveSetPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md">Αποθήκευση PIN</button>
         </form>
     </div>
 
     <!-- Verify PIN Modal (Secret Tap) -->
-    <div id="verifyPinModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[60]">
-        <form onsubmit="return false;" class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm mx-4">
+    <div id="verifyPinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-center justify-center z-[60]">
+        <form onsubmit="return false;" class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 max-h-[90vh] max-h-[90dvh] overflow-y-auto border border-slate-200/80">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Κρυφό Ξεκλείδωμα</h3>
-                <button type="button" id="closeVerifyPinBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+                <h3 class="text-xl font-bold text-slate-900">Κρυφό Ξεκλείδωμα</h3>
+                <button type="button" id="closeVerifyPinBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <p class="text-sm text-gray-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
+            <p class="text-sm text-slate-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
             <!-- Κρυφό πεδίο username για προσβασιμότητα -->
             <input type="text" autocomplete="username" value="owner" class="hidden" aria-hidden="true">
-            <input type="password" id="verifyPinInput" autocomplete="current-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
-            <button type="button" id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-3">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" id="verifyPinInput" autocomplete="current-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+            <button type="button" id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md mb-3">
                 Ξεκλείδωμα
             </button>
             <div class="text-center">
@@ -679,14 +762,14 @@
     </div>
 
     <!-- Ενημερωτικό Μήνυμα (Νέα Δυνατότητα - Μεροκάματα) -->
-    <div id="wageNoticeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[80]">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 transform transition-all relative overflow-hidden">
+    <div id="wageNoticeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-center justify-center z-[80]">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all relative overflow-hidden max-h-[90vh] max-h-[90dvh] overflow-y-auto border border-slate-200/80">
             <div class="absolute top-0 left-0 w-full h-2 bg-primary"></div>
-            <div class="flex justify-between items-center mb-4 mt-2 border-b pb-2">
-                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2"><span>📢</span> Νέα Δυνατότητα</h3>
-                <button id="closeWageNoticeBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            <div class="flex justify-between items-center mb-4 mt-2 border-b border-slate-100 pb-2">
+                <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2"><span>📢</span> Νέα Δυνατότητα</h3>
+                <button id="closeWageNoticeBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <div class="space-y-4 text-gray-700 text-sm leading-relaxed">
+            <div class="space-y-4 text-slate-700 text-sm leading-relaxed">
                 <p>Πλέον μπορείτε να δηλώνετε αν ένα μεροκάματο πληρώθηκε <b>εκτός του σημερινού ταμείου</b>!</p>
                 <p>Κατά το κλείσιμο της βάρδιας (ή την επεξεργασία), θα δείτε την επιλογή <b>"Από Ταμείο"</b> δίπλα στο ωράριο του κάθε εργαζόμενου. Αν την ξε-τικάρετε:</p>
                 <ul class="list-disc pl-5 space-y-1">
@@ -694,20 +777,20 @@
                     <li>Το μεροκάματο θα συνεχίσει να αφαιρείται κανονικά από το συνολικό Καθαρό Κέρδος του μήνα.</li>
                 </ul>
             </div>
-            <div class="mt-6 pt-4 border-t border-gray-200 text-center">
-                <button id="ackWageNoticeBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg transition duration-200 shadow-sm text-sm">Το κατάλαβα</button>
+            <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+                <button id="ackWageNoticeBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl transition duration-200 shadow-sm text-sm">Το κατάλαβα</button>
             </div>
         </div>
     </div>
 
     <!-- Help Modal (Οδηγίες Χρήσης) -->
-    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-[70]">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl mx-4 transform transition-all max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="text-xl font-bold text-gray-800">Πώς να χρησιμοποιήσετε την εφαρμογή:</h3>
-                <button id="closeHelpModalBtn" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-center justify-center z-[70]">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl mx-4 transform transition-all max-h-[90vh] max-h-[90dvh] overflow-y-auto border border-slate-200/80">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-xl font-bold text-slate-900">Πώς να χρησιμοποιήσετε την εφαρμογή:</h3>
+                <button id="closeHelpModalBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <div class="space-y-4 text-gray-700 text-sm md:text-base leading-relaxed">
+            <div class="space-y-4 text-slate-700 text-sm md:text-base leading-relaxed">
                 <ul class="space-y-3 list-disc pl-5">
                     <li><b>⚙️ Βήμα 1 - Ρυθμίσεις (Μία φορά τον μήνα):</b> Πηγαίνετε στις Ρυθμίσεις και συμπληρώστε τα μηνιαία Πάγια (Ενοίκιο, Ρεύμα), το ΤΕΒΕ/ΕΦΚΑ Ιδιοκτήτη και το μέσο ποσοστό ΦΠΑ. Το σύστημα θα τα σπάσει αυτόματα σε ημερήσιο κόστος!</li>
                     <li><b>📝 Βήμα 2 - Ημερήσιο Ταμείο (Κάθε βράδυ):</b> Περάστε το συνολικό 'Ζ' της ταμειακής, τα μετρητά, και τα έξοδα της ημέρας (Τιμολόγια/Υλικά και Καθαρά Μεροκάματα). ΜΗΝ υπολογίζετε το ΙΚΑ στα μεροκάματα, το κάνει το σύστημα για εσάς.</li>
@@ -715,8 +798,8 @@
                     <li><b>🏦 Κουμπαράς Οφειλών:</b> Στη Σύνοψη Μήνα, το σύστημα βάζει στην άκρη το ΦΠΑ και το ΙΚΑ (+35% στα μεροκάματα) για να ξέρετε ακριβώς τι θα ζητήσει ο λογιστής στο τέλος του μήνα.</li>
                 </ul>
             </div>
-            <div class="mt-6 pt-4 border-t border-gray-200 text-right">
-                <button id="closeHelpModalBtnBottom" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200 shadow-sm text-sm">Κατάλαβα</button>
+            <div class="mt-6 pt-4 border-t border-slate-100 text-right">
+                <button id="closeHelpModalBtnBottom" class="bg-primary hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl transition duration-200 shadow-sm text-sm">Κατάλαβα</button>
             </div>
         </div>
     </div>

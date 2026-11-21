@@ -2,7 +2,7 @@ import { apiFetchEmployees, apiSaveEmployeesBulk, apiFetchDailyRecords, apiFetch
 import { initAuth } from './auth.js';
 import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
-import { formatCurrency, formatTimeSlots } from './utils.js';
+import { formatCurrency, formatTimeSlots, showToast } from './utils.js';
 import {
   installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
   refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn, reopenMonthBtn, closeMonthOptions, closeMonthDesc
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     appState.MONTHLY_FIXED_COSTS = overheads + insurance;
                     appState.AVERAGE_VAT_RATE = vat / 100;
 
-                    alert('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!');
+                    showToast('Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!', 'success');
                     updateCalculations();
                     
                     if (!monthlyReportView.classList.contains('hidden')) {
@@ -42,11 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         fetchDashboardData();
                     }
                 } else {
-                    alert('Προέκυψε σφάλμα κατά την αποθήκευση των ρυθμίσεων.');
+                    showToast('Προέκυψε σφάλμα κατά την αποθήκευση των ρυθμίσεων.', 'error');
                 }
             } catch (error) {
                 console.error("Error saving settings:", error);
-                alert('Αδυναμία επικοινωνίας με τον server.');
+                showToast('Αδυναμία επικοινωνίας με τον server.', 'error');
             } finally {
                 saveSettingsBtn.disabled = false;
                 saveSettingsBtn.textContent = 'Αποθήκευση Ρυθμίσεων';
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const exp = parseFloat(quickImportExp.value) || 0;
             const wages = parseFloat(quickImportWages.value) || 0;
             
-            if (rev === 0 && exp === 0) return alert('Παρακαλώ εισάγετε δεδομένα τζίρου ή εξόδων.');
+            if (rev === 0 && exp === 0) return showToast('Παρακαλώ εισάγετε δεδομένα τζίρου ή εξόδων.', 'warning');
             if (!confirm(`Είστε σίγουροι ότι θέλετε να αποθηκεύσετε το ιστορικό για τον ${m}/${y};\nΑν υπάρχει ήδη σύνοψη για αυτόν τον μήνα, θα αντικατασταθεί.`)) return;
 
             const fixedCosts = appState.MONTHLY_FIXED_COSTS;
@@ -87,13 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await apiSaveMonthlyReport(payload);
                 
                 if (response.ok) {
-                    alert('Το ιστορικό του μήνα αποθηκεύτηκε επιτυχώς!');
+                    showToast('Το ιστορικό του μήνα αποθηκεύτηκε επιτυχώς!', 'success');
                     quickImportRev.value = ''; quickImportExp.value = ''; quickImportWages.value = '';
                     if (appState.currentDate.getMonth() + 1 === m && appState.currentDate.getFullYear() === y) {
                         if (!monthlyReportView.classList.contains('hidden')) fetchReportBtn.click();
                     }
-                } else alert('Προέκυψε σφάλμα κατά την αποθήκευση.');
-            } catch (error) { alert('Αδυναμία σύνδεσης με τον server.'); } 
+                } else showToast('Προέκυψε σφάλμα κατά την αποθήκευση.', 'error');
+            } catch (error) { showToast('Αδυναμία σύνδεσης με τον server.', 'error'); } 
             finally { quickImportBtn.disabled = false; quickImportBtn.textContent = 'Αποθήκευση Μήνα'; }
         });
     }
@@ -457,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchReportBtn.addEventListener('click', fetchMonthlyReport);
 
     closeMonthBtn.addEventListener('click', async () => {
-        if (!appState.currentReportData) return alert('Παρακαλώ ανανεώστε τα δεδομένα πρώτα.');
+        if (!appState.currentReportData) return showToast('Παρακαλώ ανανεώστε τα δεδομένα πρώτα.', 'warning');
         
         const clearData = clearDataCheckbox ? clearDataCheckbox.checked : false;
         const confirmMessage = clearData 
@@ -522,17 +522,23 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            closeMonthBtn.disabled = true;
+            closeMonthBtn.textContent = 'Κλείσιμο...';
+
             const response = await apiSaveMonthlyReport(payload);
 
             if (response.ok) {
-                alert('Ο μήνας έκλεισε επιτυχώς!');
+                showToast('Ο μήνας έκλεισε επιτυχώς!', 'success');
                 fetchMonthlyReport(); // Ανανεώνουμε τα δεδομένα για να φανούν οι αλλαγές
             } else {
-                alert('Προέκυψε σφάλμα κατά το κλείσιμο του μήνα.');
+                showToast('Προέκυψε σφάλμα κατά το κλείσιμο του μήνα.', 'error');
             }
         } catch (error) {
             console.error('Error saving monthly summary:', error);
-            alert('Αδυναμία αποθήκευσης συνόψεων.');
+            showToast('Αδυναμία αποθήκευσης συνόψεων.', 'error');
+        } finally {
+            closeMonthBtn.disabled = false;
+            closeMonthBtn.textContent = 'Οριστικό Κλείσιμο Μήνα';
         }
     });
 
@@ -542,17 +548,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const month = appState.currentDate.getMonth() + 1;
             const year = appState.currentDate.getFullYear();
             try {
+                reopenMonthBtn.disabled = true;
+                reopenMonthBtn.textContent = 'Ακύρωση...';
+
                 const response = await apiDeleteMonthlyReport(month, year);
                 if (response.ok) {
-                    alert('Το κλείσιμο ακυρώθηκε. Ο μήνας άνοιξε ξανά!');
+                    showToast('Το κλείσιμο ακυρώθηκε. Ο μήνας άνοιξε ξανά!', 'info');
                     fetchMonthlyReport();
                     fetchDashboardData();
                 } else {
-                    alert('Προέκυψε σφάλμα κατά την ακύρωση.');
+                    showToast('Προέκυψε σφάλμα κατά την ακύρωση.', 'error');
                 }
             } catch (error) {
                 console.error(error);
-                alert('Αδυναμία σύνδεσης με τον server.');
+                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+            } finally {
+                reopenMonthBtn.disabled = false;
+                reopenMonthBtn.textContent = '🔓 Ακύρωση Κλεισίματος';
             }
         });
     }
@@ -660,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (editExpensePaidFromDrawer) editExpensePaidFromDrawer.checked = true;
                 updateEditExpensesUI();
             } else {
-                alert('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).');
+                showToast('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).', 'warning');
             }
         });
     }
@@ -729,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newRevenue = posRev + cashRev + drawerExpenses + totalWages;
 
         if (isNaN(newRevenue) || newRevenue < 0) {
-            alert('Παρακαλώ εισάγετε έγκυρους αριθμούς.');
+            showToast('Παρακαλώ εισάγετε έγκυρους αριθμούς.', 'warning');
             return;
         }
 
@@ -739,6 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            saveEditModalBtn.disabled = true;
+            saveEditModalBtn.textContent = 'Αποθήκευση...';
+
             const response = await apiUpdateDailyRecord(appState.currentEditRecordId, {
                     date: appState.currentEditRecordDate,
                     daily_revenue: newRevenue,
@@ -752,17 +767,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             if (response.ok) {
+                showToast('Η εγγραφή ενημερώθηκε επιτυχώς!', 'success');
                 closeEditModal();
                 fetchMonthlyReport(); // Ανανεώνουμε τον πίνακα και τα σύνολα της αναφοράς!
                 await fetchDashboardData(); // Παίρνουμε τα νέα δεδομένα
                 renderCalendar(); // Ενημερώνουμε τα κουτάκια του ημερολογίου
                 updateCalculations(); // Ενημερώνουμε τα νούμερα
             } else {
-                alert('Προέκυψε σφάλμα κατά την ενημέρωση.');
+                showToast('Προέκυψε σφάλμα κατά την ενημέρωση.', 'error');
             }
         } catch (error) {
             console.error('Error updating record:', error);
-            alert('Αδυναμία σύνδεσης με τον server.');
+            showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+        } finally {
+            saveEditModalBtn.disabled = false;
+            saveEditModalBtn.textContent = 'Αποθήκευση Αλλαγών';
         }
     });
 
@@ -771,15 +790,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await apiDeleteDailyRecord(id);
             if (response.ok) {
+                showToast('Η εγγραφή διαγράφηκε επιτυχώς!', 'info');
                 fetchMonthlyReport(); // Ανανεώνουμε αμέσως τη λίστα
                 await fetchDashboardData();
                 renderCalendar();
                 updateCalculations();
             } else {
-                alert('Προέκυψε σφάλμα κατά τη διαγραφή.');
+                showToast('Προέκυψε σφάλμα κατά τη διαγραφή.', 'error');
             }
         } catch (error) {
             console.error('Error deleting record:', error);
+            showToast('Αδυναμία σύνδεσης με τον server.', 'error');
         }
     };
 
@@ -797,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modalExpensePaidFromDrawer) modalExpensePaidFromDrawer.checked = true;
             updateModalExpensesUI();
         } else {
-            alert('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).');
+            showToast('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).', 'warning');
         }
     });
 
@@ -820,9 +841,58 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dashExpensePaidFromDrawer) dashExpensePaidFromDrawer.checked = true;
             updateDashExpensesUI();
         } else {
-            alert('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).');
+            showToast('Παρακαλώ συμπληρώστε Περιγραφή και ένα έγκυρο Ποσό (μεγαλύτερο του 0).', 'warning');
         }
     });
+
+    // --- Γρήγορη Καταχώρηση Εξόδων με Enter ---
+    if (expenseDescInput && expenseAmountInput && addExpenseBtn) {
+        expenseDescInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                expenseAmountInput.focus();
+            }
+        });
+        expenseAmountInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addExpenseBtn.click();
+                expenseDescInput.focus();
+            }
+        });
+    }
+
+    if (editExpenseDescInput && editExpenseAmountInput && addEditExpenseBtn) {
+        editExpenseDescInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                editExpenseAmountInput.focus();
+            }
+        });
+        editExpenseAmountInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addEditExpenseBtn.click();
+                editExpenseDescInput.focus();
+            }
+        });
+    }
+
+    if (dashExpenseDesc && dashExpenseAmount && addDashExpenseBtn) {
+        dashExpenseDesc.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                dashExpenseAmount.focus();
+            }
+        });
+        dashExpenseAmount.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addDashExpenseBtn.click();
+                dashExpenseDesc.focus();
+            }
+        });
+    }
 
     saveModalDayBtn.addEventListener('click', async () => {
         const pos = parseFloat(posTotal.value) || 0;
@@ -893,7 +963,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Επιτρέπουμε μηδενικό τζίρο μόνο αν ο χρήστης βρίσκεται στο "Προσθήκη Εξόδων"
         if (appState.currentDayModalMode !== 'expenses' && officialRevenue === 0) {
-            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
+            showToast('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.', 'warning');
             return;
         }
 
@@ -921,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 saveModalDayBtn.classList.replace('bg-primary', 'bg-green-600');
                 saveModalDayBtn.textContent = 'Επιτυχία!';
+                showToast(appState.currentDayModalMode === 'expenses' ? 'Τα έξοδα αποθηκεύτηκαν!' : 'Η βάρδια έκλεισε επιτυχώς!', 'success');
                 
                 await fetchDashboardData(); 
                 renderCalendar();
@@ -934,13 +1005,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 1500);
 
             } else {
-                alert('Προέκυψε σφάλμα κατά την αποθήκευση.');
+                showToast('Προέκυψε σφάλμα κατά την αποθήκευση.', 'error');
                 saveModalDayBtn.disabled = false;
                 saveModalDayBtn.textContent = appState.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Κλείσιμο Βάρδιας';
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Αδυναμία σύνδεσης με τον server.');
+            showToast('Αδυναμία σύνδεσης με τον server.', 'error');
             saveModalDayBtn.disabled = false;
             saveModalDayBtn.textContent = appState.currentDayModalMode === 'expenses' ? 'Αποθήκευση Εξόδων' : 'Κλείσιμο Βάρδιας';
         }
@@ -967,9 +1038,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeModalBtn.addEventListener('click', closeDayModal);
     
-    // Κλείσιμο modal όταν κάνουμε κλικ έξω από αυτό
+    // Ενιαία Συμπεριφορά Modals: Κλείσιμο με κλικ στο μαύρο backdrop & πλήκτρο Escape
     dayModal.addEventListener('click', (e) => {
         if (e.target === dayModal) closeDayModal();
+    });
+
+    if (dayActionModal) {
+        dayActionModal.addEventListener('click', (e) => {
+            if (e.target === dayActionModal) dayActionModal.classList.add('hidden');
+        });
+    }
+
+    if (editRecordModal) {
+        editRecordModal.addEventListener('click', (e) => {
+            if (e.target === editRecordModal) closeEditModal();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (dayActionModal && !dayActionModal.classList.contains('hidden')) {
+                dayActionModal.classList.add('hidden');
+            }
+            if (editRecordModal && !editRecordModal.classList.contains('hidden')) {
+                closeEditModal();
+            }
+            const verifyPinModalEl = document.getElementById('verifyPinModal');
+            if (verifyPinModalEl && !verifyPinModalEl.classList.contains('hidden')) {
+                verifyPinModalEl.classList.add('hidden');
+            }
+            if (dayModal && !dayModal.classList.contains('hidden')) {
+                closeDayModal();
+            }
+            if (helpModal && !helpModal.classList.contains('hidden')) {
+                closeHelp();
+            }
+        }
     });
     
     // Αρχικοποίηση ημερομηνίας στο "Κλείσιμο Ημέρας"
@@ -1061,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Επιτρέπουμε μηδενικό τζίρο μόνο αν ο χρήστης βρίσκεται στο "Προσθήκη Εξόδων"
         if (appState.currentDayModalMode !== 'expenses' && officialRevenue === 0) {
-            alert('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.');
+            showToast('Παρακαλώ εισάγετε έγκυρο τζίρο (Ζ ή Μετρητά/POS) πριν αποθηκεύσετε.', 'warning');
             return;
         }
 
@@ -1090,6 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveDailyBtn.classList.replace('bg-blue-600', 'bg-green-600');
                 saveDailyBtn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
                 saveDailyBtn.textContent = 'Επιτυχία!';
+                showToast('Η εγγραφή αποθηκεύτηκε επιτυχώς!', 'success');
                 
                 await fetchDashboardData(); // Ανανέωση δεδομένων & γραφήματος
                 renderCalendar();
@@ -1113,12 +1218,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 2000);
 
             } else {
-                alert('Προέκυψε σφάλμα κατά την αποθήκευση (Server Error).');
+                showToast('Προέκυψε σφάλμα κατά την αποθήκευση (Server Error).', 'error');
                 resetSaveButton();
             }
         } catch (error) {
             console.error('Error saving data:', error);
-            alert('Αδυναμία σύνδεσης με τον server. Βεβαιωθείτε ότι ο server τρέχει.');
+            showToast('Αδυναμία σύνδεσης με τον server. Βεβαιωθείτε ότι ο server τρέχει.', 'error');
             resetSaveButton();
         }
     });

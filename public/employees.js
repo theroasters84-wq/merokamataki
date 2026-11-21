@@ -1,6 +1,6 @@
 import { apiFetchEmployees, apiSaveEmployeesBulk } from './api.js';
 import { employeeListEl, addEmployeeBtn } from './dom.js';
-import { formatTimeSlots } from './utils.js';
+import { formatTimeSlots, showToast } from './utils.js';
 
 let updateCallback = null;
 let renderCallback = null;
@@ -102,16 +102,25 @@ const renderCalendar = () => {
             employees.push({ name, hourly_rate, schedule });
         });
         try {
-            await apiSaveEmployeesBulk(employees);
+            const res = await apiSaveEmployeesBulk(employees);
+            if (res && res.ok) {
+                showToast('Το πρόγραμμα αποθηκεύτηκε!', 'success');
+                return true;
+            } else {
+                showToast('Σφάλμα αποθήκευσης προσωπικού', 'error');
+                return false;
+            }
         } catch (error) {
             console.error('Failed to save employees:', error);
+            showToast('Σφάλμα αποθήκευσης προσωπικού', 'error');
+            return false;
         }
     };
 
 // --- Διαχείριση Προσωπικού (Δυναμική Λίστα) ---
     const createEmployeeRow = () => {
         const div = document.createElement('div');
-        div.className = 'flex flex-col gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg employee-row transition-all';
+        div.className = 'flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all employee-row';
         
         const daysArr = [
             { id: 1, label: 'Δε', title: 'Δευτέρα' },
@@ -123,51 +132,57 @@ const renderCalendar = () => {
             { id: 0, label: 'Κυ', title: 'Κυριακή' }
         ];
 
-        let daysHtml = '<div class="flex justify-start sm:justify-between items-end w-full text-xs font-medium text-gray-600 mt-2 px-1 overflow-x-auto pb-2 gap-4 sm:gap-1">';
+        let daysHtml = '<div class="grid grid-cols-2 sm:grid-cols-7 gap-2 w-full text-xs font-medium text-slate-700 mt-1">';
         let allSlotsPanels = '';
 
         daysArr.forEach(d => {
             let sHtml = `
-            <div class="time-range-panel-day hidden flex-col gap-2 mt-2 p-2 bg-white rounded border border-gray-200 w-full" data-day="${d.id}">
+            <div class="time-range-panel-day hidden flex-col gap-2.5 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 w-full" data-day="${d.id}">
+                <div class="text-xs font-bold text-slate-700 border-b border-slate-200/80 pb-1.5 flex items-center justify-between">
+                    <span>⏱️ Ακριβές Ωράριο — ${d.title}</span>
+                </div>
                 <div class="flex items-center gap-2 w-full justify-center flex-wrap">
                     <div class="flex flex-col items-center">
-                        <label class="text-[10px] text-gray-500 font-bold mb-1">Από</label>
-                        <input type="time" class="time-from-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
+                        <label class="text-[10px] text-slate-500 font-bold mb-1">Από</label>
+                        <input type="time" class="time-from-day px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white text-slate-700 w-[112px] text-center text-base sm:text-sm font-medium tabular-nums">
                     </div>
-                    <span class="text-gray-400 font-bold mt-4">-</span>
+                    <span class="text-slate-400 font-bold mt-4">-</span>
                     <div class="flex flex-col items-center">
-                        <label class="text-[10px] text-gray-500 font-bold mb-1">Έως</label>
-                        <input type="time" class="time-to-day p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
+                        <label class="text-[10px] text-slate-500 font-bold mb-1">Έως</label>
+                        <input type="time" class="time-to-day px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white text-slate-700 w-[112px] text-center text-base sm:text-sm font-medium tabular-nums">
                     </div>
-                    <div class="w-px h-6 bg-gray-300 mx-1 mt-4 hidden sm:block"></div>
+                    <div class="w-px h-6 bg-slate-300 mx-1 mt-4 hidden sm:block"></div>
                     <div class="flex flex-col items-center">
-                        <label class="text-[10px] text-gray-500 font-bold mb-1">Από (2)</label>
-                        <input type="time" class="time-from-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
+                        <label class="text-[10px] text-slate-500 font-bold mb-1">Από (2)</label>
+                        <input type="time" class="time-from-day-2 px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white text-slate-700 w-[112px] text-center text-base sm:text-sm font-medium tabular-nums">
                     </div>
-                    <span class="text-gray-400 font-bold mt-4">-</span>
+                    <span class="text-slate-400 font-bold mt-4">-</span>
                     <div class="flex flex-col items-center">
-                        <label class="text-[10px] text-gray-500 font-bold mb-1">Έως (2)</label>
-                        <input type="time" class="time-to-day-2 p-1 border border-gray-300 rounded focus:ring-primary outline-none bg-white text-gray-700 w-[100px] text-center text-xs font-medium">
+                        <label class="text-[10px] text-slate-500 font-bold mb-1">Έως (2)</label>
+                        <input type="time" class="time-to-day-2 px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white text-slate-700 w-[112px] text-center text-base sm:text-sm font-medium tabular-nums">
                     </div>
                 </div>
             </div>`;
             allSlotsPanels += sHtml;
 
             daysHtml += `
-                <div class="flex flex-col items-center gap-1 day-wrapper flex-shrink-0" data-day="${d.id}">
-                    <div class="flex justify-center items-center gap-1 w-full">
-                        <select class="shift-input-day text-[12px] p-0.5 border border-gray-300 rounded bg-white outline-none focus:ring-primary text-center cursor-pointer w-7 h-6" title="Βάρδια">
+                <div class="flex flex-col justify-between gap-2 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 day-wrapper" data-day="${d.id}">
+                    <label class="flex items-center justify-between gap-1.5 cursor-pointer hover:text-primary min-h-[28px]">
+                        <span class="font-bold text-slate-800 text-xs sm:text-xs" title="${d.title}">${d.label} <span class="sm:hidden font-normal text-slate-500">(${d.title})</span></span>
+                        <input type="checkbox" class="day-checkbox w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" data-day="${d.id}">
+                    </label>
+                    <div class="flex items-center gap-1.5 w-full">
+                        <select class="shift-input-day flex-1 min-h-[36px] text-base sm:text-sm px-1.5 py-1 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-center cursor-pointer" title="Βάρδια">
                             <option value="morning">☀️</option>
                             <option value="night">🌙</option>
                             <option value="split">⚡</option>
                         </select>
-                        <button type="button" class="toggle-slots-btn-day text-[10px] text-gray-500 hover:text-primary bg-gray-200 hover:bg-gray-300 rounded px-1.5 py-0.5 transition-colors h-6" title="24ωρο Ωράριο">🕒</button>
+                        <button type="button" class="toggle-slots-btn-day min-w-[36px] min-h-[36px] flex items-center justify-center text-xs text-slate-600 hover:text-primary bg-white hover:bg-blue-50 border border-slate-300 rounded-lg px-2 py-1 transition-colors" title="24ωρο Ωράριο">🕒</button>
                     </div>
-                    <input type="number" class="hours-input-day w-10 text-[10px] p-0.5 border border-gray-300 rounded text-center outline-none focus:ring-primary" min="0" step="0.5" value="8" title="Ώρες εργασίας ημέρας">
-                    <label class="flex flex-col items-center gap-0.5 cursor-pointer hover:text-primary">
-                        <span title="${d.title}">${d.label}</span>
-                        <input type="checkbox" class="day-checkbox w-3.5 h-3.5 text-primary rounded border-gray-300 focus:ring-primary" data-day="${d.id}">
-                    </label>
+                    <div class="flex items-center gap-1 w-full">
+                        <input type="number" inputmode="decimal" class="hours-input-day w-full min-h-[36px] text-base sm:text-sm px-2 py-1 border border-slate-300 rounded-lg bg-white text-center outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tabular-nums" min="0" step="0.5" value="8" title="Ώρες εργασίας ημέρας">
+                        <span class="text-[11px] text-slate-400 font-medium">ώρ.</span>
+                    </div>
                 </div>
             `;
         });
@@ -175,20 +190,20 @@ const renderCalendar = () => {
 
         div.innerHTML = `
             <!-- ΠΡΟΒΟΛΗ (Όταν αποθηκευτεί) -->
-            <div class="view-mode hidden flex justify-between items-center w-full cursor-pointer hover:bg-gray-200 p-2 rounded transition-colors border border-transparent hover:border-gray-300">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">👤</span>
-                    <span class="font-bold text-gray-800 display-name text-lg"></span>
+            <div class="view-mode hidden flex justify-between items-center w-full cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base">👤</span>
+                    <span class="font-bold text-slate-800 display-name text-base sm:text-lg"></span>
                 </div>
-                <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border border-gray-200">✏️ Επεξεργασία</span>
+                <span class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-colors">✏️ Επεξεργασία</span>
             </div>
             <!-- ΕΠΕΞΕΡΓΑΣΙΑ -->
-            <div class="edit-mode flex flex-col gap-2 w-full">
+            <div class="edit-mode flex flex-col gap-2.5 w-full">
                 <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center w-full">
-                    <input type="text" placeholder="Όνομα" class="flex-grow px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none name-input">
-                    <input type="number" placeholder="Ωρομίσθιο (€)" class="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-primary focus:border-primary outline-none rate-input" min="0" step="0.01">
-                    <button type="button" class="save-emp-btn text-sm bg-green-100 hover:bg-green-200 text-green-700 font-bold py-1.5 px-3 rounded transition-colors ml-auto shadow-sm">Αποθήκευση</button>
-                    <button type="button" class="text-red-500 hover:text-red-700 p-1 delete-btn font-bold text-xl leading-none">&times;</button>
+                    <input type="text" placeholder="Όνομα εργαζόμενου" class="flex-grow px-3 py-2 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none name-input">
+                    <input type="number" inputmode="decimal" placeholder="Ωρομίσθιο (€)" class="w-32 sm:w-28 px-3 py-2 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none tabular-nums rate-input" min="0" step="0.01">
+                    <button type="button" class="save-emp-btn min-h-[38px] text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors ml-auto shadow-sm">Αποθήκευση</button>
+                    <button type="button" class="min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-700 p-1.5 delete-btn font-bold text-xl leading-none transition-colors" title="Διαγραφή Εργαζόμενου">&times;</button>
                 </div>
                 ${daysHtml}
                 <div class="w-full slots-container">
@@ -204,19 +219,29 @@ const renderCalendar = () => {
         const saveEmpBtn = div.querySelector('.save-emp-btn');
 
         // Λογική Κουμπιού Αποθήκευσης/Επεξεργασίας
-        saveEmpBtn.addEventListener('click', () => {
+        saveEmpBtn.addEventListener('click', async () => {
             const name = nameInput.value.trim();
             if (!name) {
-                alert('Παρακαλώ εισάγετε όνομα εργαζόμενου.');
+                showToast('Παρακαλώ εισάγετε όνομα εργαζόμενου.', 'warning');
                 return;
             }
             displayName.textContent = name;
-            editMode.classList.add('hidden');
-            viewMode.classList.remove('hidden');
-            
-            updateCalculations();
-            renderCalendar();
-            saveEmployeesToServer(); // Αποθήκευση στη Βάση Δεδομένων!
+            saveEmpBtn.disabled = true;
+            const prevText = saveEmpBtn.textContent;
+            saveEmpBtn.textContent = 'Αποθήκευση...';
+
+            try {
+                updateCalculations();
+                renderCalendar();
+                const ok = await saveEmployeesToServer();
+                if (ok) {
+                    editMode.classList.add('hidden');
+                    viewMode.classList.remove('hidden');
+                }
+            } finally {
+                saveEmpBtn.disabled = false;
+                saveEmpBtn.textContent = prevText;
+            }
         });
 
         viewMode.addEventListener('click', () => {
@@ -307,8 +332,12 @@ const renderCalendar = () => {
             });
         });
 
-        // Διαγραφή εργαζόμενου
+        // Διαγραφή εργαζόμενου με υποχρεωτική επιβεβαίωση
         div.querySelector('.delete-btn').addEventListener('click', () => {
+            const name = nameInput.value.trim() || 'Νέος Εργαζόμενος';
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε τον εργαζόμενο "' + name + '";')) {
+                return;
+            }
             div.remove();
             updateCalculations();
             renderCalendar();

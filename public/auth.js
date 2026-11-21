@@ -1,4 +1,5 @@
 import { getToken, apiLogin, apiRegister, apiSetPin, apiVerifyPin, apiForgotPin, apiCheckToken } from './api.js';
+import { showToast } from './utils.js';
 
 export function initAuth({ onAuthSuccess }) {
     const loginContainer = document.getElementById('loginContainer');
@@ -40,7 +41,7 @@ export function initAuth({ onAuthSuccess }) {
             exitAdminBtn = document.createElement('button');
             exitAdminBtn.id = 'exitAdminBtn';
             exitAdminBtn.innerHTML = '🔒 Έξοδος Admin';
-            exitAdminBtn.className = 'bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded shadow font-bold hover:bg-red-700 transition-colors cursor-pointer text-xs md:text-sm mr-2';
+            exitAdminBtn.className = 'bg-red-600 text-white min-h-[38px] sm:min-h-[40px] px-3 py-1.5 md:px-4 md:py-2 inline-flex items-center justify-center rounded-xl shadow-sm font-bold hover:bg-red-700 transition-colors cursor-pointer text-xs md:text-sm mr-2';
             
             if (logoutBtn && logoutBtn.parentNode) {
                 logoutBtn.parentNode.insertBefore(exitAdminBtn, logoutBtn);
@@ -96,9 +97,12 @@ export function initAuth({ onAuthSuccess }) {
             e.preventDefault();
             const email = loginEmail.value.trim();
             const password = loginPassword.value;
-            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
+            if (!email || !password) return showToast('Συμπληρώστε email και κωδικό.', 'warning');
 
             try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Σύνδεση...';
+
                 const res = await apiLogin(email, password);
                 const data = await res.json();
                 if (res.ok) {
@@ -108,11 +112,14 @@ export function initAuth({ onAuthSuccess }) {
                     loginPassword.value = '';
                     window.location.reload(); // Προχωράει στο Dashboard με καθαρό DOM
                 } else {
-                    alert(data.error || 'Λάθος στοιχεία.');
+                    showToast(data.error || 'Λάθος στοιχεία.', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Αδυναμία σύνδεσης με τον server.');
+                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Είσοδος';
             }
         });
     }
@@ -140,7 +147,7 @@ export function initAuth({ onAuthSuccess }) {
             const password = registerPassword.value;
             const storeName = registerStoreName.value.trim();
 
-            if (!email || !password) return alert('Συμπληρώστε email και κωδικό.');
+            if (!email || !password) return showToast('Συμπληρώστε email και κωδικό.', 'warning');
 
             try {
                 registerBtn.disabled = true;
@@ -161,16 +168,16 @@ export function initAuth({ onAuthSuccess }) {
                         registerStoreName.value = '';
                         window.location.reload(); 
                     } else {
-                        alert('Η εγγραφή πέτυχε, αλλά απέτυχε η αυτόματη σύνδεση. Παρακαλώ συνδεθείτε χειροκίνητα.');
+                        showToast('Η εγγραφή πέτυχε, αλλά απέτυχε η αυτόματη σύνδεση. Παρακαλώ συνδεθείτε χειροκίνητα.', 'warning');
                         showLoginBtn.click();
                         loginEmail.value = email; 
                     }
                 } else {
-                    alert(data.error || 'Σφάλμα κατά την εγγραφή.');
+                    showToast(data.error || 'Σφάλμα κατά την εγγραφή.', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Αδυναμία σύνδεσης με τον server.');
+                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
             } finally {
                 registerBtn.disabled = false;
                 registerBtn.textContent = 'Δημιουργία Λογαριασμού';
@@ -227,19 +234,25 @@ export function initAuth({ onAuthSuccess }) {
         saveSetPinBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             const pin = newPinInput.value.trim();
-            if (!pin) return alert('Παρακαλώ εισάγετε PIN.');
+            if (!pin) return showToast('Παρακαλώ εισάγετε PIN.', 'warning');
             try {
+                saveSetPinBtn.disabled = true;
+                saveSetPinBtn.textContent = 'Αποθήκευση...';
+
                 const res = await apiSetPin(pin);
                 if (res.ok) {
                     localStorage.setItem('hasPin', 'true');
                     setPinModal.classList.add('hidden');
-                    alert('Το PIN αποθηκεύτηκε επιτυχώς!');
+                    showToast('Το PIN αποθηκεύτηκε επιτυχώς!', 'success');
                 } else {
                     const data = await res.json();
-                    alert(data.error || 'Σφάλμα κατά την αποθήκευση PIN.');
+                    showToast(data.error || 'Σφάλμα κατά την αποθήκευση PIN.', 'error');
                 }
             } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
+                showToast('Σφάλμα επικοινωνίας με τον server.', 'error');
+            } finally {
+                saveSetPinBtn.disabled = false;
+                saveSetPinBtn.textContent = 'Αποθήκευση PIN';
             }
         });
     }
@@ -251,23 +264,38 @@ export function initAuth({ onAuthSuccess }) {
         });
     }
 
+    if (verifyPinModal) {
+        verifyPinModal.addEventListener('click', (e) => {
+            if (e.target === verifyPinModal) {
+                verifyPinModal.classList.add('hidden');
+            }
+        });
+    }
+
     if (verifyPinBtn) {
         verifyPinBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             const pin = verifyPinInput.value.trim();
-            if (!pin) return;
+            if (!pin) return showToast('Παρακαλώ εισάγετε το PIN.', 'warning');
             try {
+                verifyPinBtn.disabled = true;
+                verifyPinBtn.textContent = 'Έλεγχος...';
+
                 const res = await apiVerifyPin(pin);
                 const data = await res.json();
                 if (res.ok && data.success) {
                     verifyPinModal.classList.add('hidden');
                     localStorage.setItem('isAdmin', 'true');
                     enableAdminMode();
+                    showToast('Καλώς ήρθατε στη λειτουργία Διαχειριστή!', 'success');
                 } else {
-                    alert(data.error || 'Λάθος PIN. Η πρόσβαση απορρίφθηκε.');
+                    showToast(data.error || 'Λάθος PIN. Η πρόσβαση απορρίφθηκε.', 'error');
                 }
             } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
+                showToast('Σφάλμα επικοινωνίας με τον server.', 'error');
+            } finally {
+                verifyPinBtn.disabled = false;
+                verifyPinBtn.textContent = 'Ξεκλείδωμα';
             }
         });
     }
@@ -276,12 +304,18 @@ export function initAuth({ onAuthSuccess }) {
         forgotPinBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             try {
+                forgotPinBtn.disabled = true;
+                forgotPinBtn.textContent = 'Αποστολή...';
+
                 const res = await apiForgotPin();
                 const data = await res.json();
-                if (res.ok) alert('Ελέγξτε το email σας για οδηγίες ανάκτησης του PIN.');
-                else alert(data.error || 'Σφάλμα κατά την αποστολή.');
+                if (res.ok) showToast('Ελέγξτε το email σας για οδηγίες ανάκτησης του PIN.', 'info');
+                else showToast(data.error || 'Σφάλμα κατά την αποστολή.', 'error');
             } catch (err) {
-                alert('Σφάλμα επικοινωνίας με τον server.');
+                showToast('Σφάλμα επικοινωνίας με τον server.', 'error');
+            } finally {
+                forgotPinBtn.disabled = false;
+                forgotPinBtn.textContent = 'Ξέχασα το PIN';
             }
         });
     }
