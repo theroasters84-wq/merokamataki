@@ -4,8 +4,8 @@ import { appState } from './state.js';
 import { initEmployees, fetchEmployees } from './employees.js';
 import { formatCurrency, formatTimeSlots, showToast } from './utils.js';
 import {
-  installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
-  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn, reopenMonthBtn, closeMonthOptions, closeMonthDesc
+  installAppBtn, logoutBtn, helpBtn, helpModal, closeHelpModalBtn, closeHelpModalBtnBottom, recordDateEl, posRevenueEl, cashRevenueEl, actualCashEl, drawerStatusEl, foodCostDisplayEl, saveDailyBtn, dashCashierName, dashExpenseDesc, dashExpenseCategory, dashExpenseAmount, dashExpensePaidFromDrawer, addDashExpenseBtn, dashExpensesList, dashTotalExpensesDisplay, employeeListEl, addEmployeeBtn, totalWeeklyCostEl, breakEvenPointEl, dailyOperatingCostEl, dailyBreakEvenPointEl, dailyNetProfitEl, calendarGrid, currentMonthDisplay, prevMonthBtn, nextMonthBtn, dayActionModal, actionExpensesBtn, actionClosureBtn, closeDayActionModalBtn, dayModal, modalDateDisplay, closeModalBtn, tabDashboard, tabMonthlyReport, dashboardView, monthlyReportView, reportMonthDisplay, reportTotalRevenue, reportTotalExpenses, reportAverageFoodCost, reportFixedCosts, reportNetProfit, fetchReportBtn, closeMonthBtn, monthlyRecordsList, clearDataCheckbox, editRecordModal, editModalDateDisplay, editModalPosRevenue, editModalCashRevenue, editModalZReceipt, editModalEmployeesList, closeEditModalBtn, closeEditModalIconBtn, saveEditModalBtn, editModalCashierName, editExpenseDescInput, editExpenseCategoryInput, editExpenseAmountInput, editExpensePaidFromDrawer, addEditExpenseBtn, editModalExpensesList, editModalTotalExpensesDisplay, expenseDescInput, expenseCategoryInput, expenseAmountInput, modalExpensePaidFromDrawer, addExpenseBtn, modalExpensesList, modalTotalExpensesDisplay, posTotal, drawerCash, zReceipt, modalDrawerStatus, saveModalDayBtn, modalCashierName, modalShiftsList, modalShiftsSection, modalRevenueSection, foodCostChartCanvas,
+  refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateEditModalBreakdown, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, reportNetProfitAfterIka, reportVatBreakdownDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn, reopenMonthBtn, closeMonthOptions, closeMonthDesc
   , reportAverageDailyRevenue
 } from './dom.js';
 document.addEventListener('DOMContentLoaded', () => {
@@ -280,7 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     worked.forEach(emp => {
                         let empId = typeof emp === 'string' ? emp : emp.staff_id;
                         let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
-                        if (!workedByDate[dateStr].has(empId)) {
+                        if (typeof emp === 'object' && emp !== null) {
+                            actualMonthlyPayroll += wage;
+                            workedByDate[dateStr].add(empId);
+                        } else if (!workedByDate[dateStr].has(empId)) {
                             actualMonthlyPayroll += wage;
                             workedByDate[dateStr].add(empId);
                         }
@@ -288,9 +291,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // Υπολογισμός Προβλέψεων Οφειλών (Κουμπαράς)
-                const monthlyVatProvision = totalRev - netTotalRev;
+                // Αφαιρούμε τον εκτιμώμενο ΦΠΑ των εξόδων από τον ΦΠΑ των πωλήσεων
+                const salesVat = totalRev - netTotalRev;
+                const netTotalExp = totalExp / (1 + appState.AVERAGE_VAT_RATE);
+                const expensesVat = totalExp - netTotalExp;
+                const monthlyVatProvision = Math.max(0, salesVat - expensesVat);
                 const monthlyIkaProvision = actualMonthlyPayroll * 0.35;
 
+                const daysInMonth = new Date(year, month, 0).getDate() || 30;
                 let finalNetProfit;
                 let proRataFixedCosts;
                 let activeDays = 1;
@@ -299,15 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     proRataFixedCosts = fixedCosts;
                     finalNetProfit = parseFloat(data.net_profit);
                 } else {
-                    // Υπολογισμός Αναλογικών Παγίων
+                    // Υπολογισμός Αναλογικών Παγίων με βάση τις πραγματικές ημέρες του μήνα
                     const uniqueDaysRecorded = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
                     activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
-                    proRataFixedCosts = (fixedCosts / 30) * activeDays;
+                    proRataFixedCosts = (fixedCosts / daysInMonth) * activeDays;
                     finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
                 }
 
                 // Υπολογισμός Μέσου Ημερήσιου Τζίρου
-                const averageDailyRevenue = activeDays > 0 ? totalRev / activeDays : 0;
+                const uniqueDaysForAvg = new Set(records.map(r => r.date ? r.date.substring(0, 10) : '')).size;
+                const daysDivisor = uniqueDaysForAvg > 0 ? uniqueDaysForAvg : (isClosedMonth ? daysInMonth : 1);
+                const averageDailyRevenue = daysDivisor > 0 ? totalRev / daysDivisor : 0;
                 if (reportAverageDailyRevenue) {
                     reportAverageDailyRevenue.textContent = formatCurrency(averageDailyRevenue);
                 }
@@ -315,39 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // AI Forecast Module
                 const calculateMonthProjection = () => {
                     const avgDailyNetRev = netTotalRev / activeDays;
-                    
-                    let actualPayrollSoFar = 0;
-                    const tempWageMap = {};
-                    employeeRows.forEach(row => {
-                        const name = row.querySelector('.name-input').value.trim();
-                        const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
-                        let fallbackHours = 8;
-                        const firstChecked = row.querySelector('.day-checkbox:checked');
-                        if (firstChecked) {
-                            const dayWrapper = row.querySelector(`.day-wrapper[data-day="${firstChecked.dataset.day}"]`);
-                            if (dayWrapper) fallbackHours = parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0;
-                        }
-                        if (name) tempWageMap[name] = rate * fallbackHours;
-                    });
-                    
-                    const workedByDateForecast = {};
-                    records.forEach(record => {
-                        const dateStr = record.date;
-                        if (!workedByDateForecast[dateStr]) workedByDateForecast[dateStr] = new Set();
-                        let worked = [];
-                        try { worked = typeof record.worked_employees === 'string' ? JSON.parse(record.worked_employees) : record.worked_employees || []; } catch(e) {}
-                        worked.forEach(emp => {
-                            let empId = typeof emp === 'string' ? emp : emp.staff_id;
-                            let wage = typeof emp === 'string' ? (tempWageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
-                            if (!workedByDateForecast[dateStr].has(empId)) {
-                                actualPayrollSoFar += wage;
-                                workedByDateForecast[dateStr].add(empId);
-                            }
-                        });
-                    });
-
-                    const avgDailyExp = (totalExp + actualPayrollSoFar) / activeDays;
-                    const forecastProfit = (avgDailyNetRev * 30) - (avgDailyExp * 30) - fixedCosts;
+                    const avgDailyExp = (totalExp + actualMonthlyPayroll) / activeDays;
+                    const forecastProfit = (avgDailyNetRev * daysInMonth) - (avgDailyExp * daysInMonth) - fixedCosts;
                     
                     if (reportForecastProfit) {
                         reportForecastProfit.textContent = formatCurrency(forecastProfit);
@@ -431,7 +410,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportFixedCosts.textContent = formatCurrency(proRataFixedCosts);
                 reportNetProfit.textContent = formatCurrency(finalNetProfit);
 
+                if (reportNetProfitAfterIka) {
+                    const netAfterIka = finalNetProfit - monthlyIkaProvision;
+                    reportNetProfitAfterIka.textContent = `Μετά από ΙΚΑ: ${formatCurrency(netAfterIka)}`;
+                    reportNetProfitAfterIka.className = netAfterIka >= 0
+                        ? 'text-xs font-semibold text-indigo-900 bg-indigo-100/80 border border-indigo-200/80 px-2.5 py-1 rounded-lg mt-2 tabular-nums'
+                        : 'text-xs font-semibold text-rose-800 bg-rose-100/80 border border-rose-200/80 px-2.5 py-1 rounded-lg mt-2 tabular-nums';
+                }
+
                 if (reportVatProvision) reportVatProvision.textContent = formatCurrency(monthlyVatProvision);
+                if (reportVatBreakdownDisplay) {
+                    reportVatBreakdownDisplay.textContent = `Εσόδων: ${formatCurrency(salesVat)} − Εξόδων: ${formatCurrency(expensesVat)}`;
+                }
                 if (reportIkaProvision) reportIkaProvision.textContent = formatCurrency(monthlyIkaProvision);
 
                 // Color net profit
@@ -499,17 +489,18 @@ document.addEventListener('DOMContentLoaded', () => {
             worked.forEach(emp => {
                 let empId = typeof emp === 'string' ? emp : emp.staff_id;
                 let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
-                if (!workedByDateClosing[dateStr].has(empId)) {
+                if (typeof emp === 'object' && emp !== null) {
+                    actualMonthlyPayroll += wage;
+                    workedByDateClosing[dateStr].add(empId);
+                } else if (!workedByDateClosing[dateStr].has(empId)) {
                     actualMonthlyPayroll += wage;
                     workedByDateClosing[dateStr].add(empId);
                 }
             });
         });
 
-        const uniqueDaysRecorded = new Set(appState.currentMonthlyRecords.map(r => r.date ? r.date.substring(0, 10) : '')).size;
-        const activeDays = uniqueDaysRecorded > 0 ? uniqueDaysRecorded : 1;
-        const proRataFixedCosts = (fixedCosts / 30) * activeDays;
-        const finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - proRataFixedCosts;
+        // Κατά το οριστικό κλείσιμο του μήνα αφαιρείται το 100% των μηνιαίων παγίων
+        const finalNetProfit = netTotalRev - totalExp - actualMonthlyPayroll - fixedCosts;
 
         const payload = {
             month,
@@ -594,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) {
             appState.currentEditExpenses = [];
         }
-        updateEditExpensesUI();
 
         if (editModalCashierName) editModalCashierName.value = record.cashier_name || '';
 
@@ -610,6 +600,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         appState.currentEditRecordWorkedEmployees = workedEmployees;
 
+        // Υπολογισμός αν είχε δηλωθεί διαφορετικό "Ζ" από το άθροισμα ταμείου
+        let savedDrawerExp = 0;
+        appState.currentEditExpenses.forEach(exp => {
+            if (exp.paidFromDrawer !== false) savedDrawerExp += parseFloat(exp.amount) || 0;
+        });
+        let savedDrawerWages = 0;
+        workedEmployees.forEach(emp => {
+            if (typeof emp === 'object' && emp !== null && emp.paid_from_drawer !== false) {
+                savedDrawerWages += parseFloat(emp.total_cost) || 0;
+            }
+        });
+        const savedCalculatedRev = (parseFloat(record.pos_revenue) || 0) + (parseFloat(record.cash_revenue) || 0) + savedDrawerExp + savedDrawerWages;
+        const savedOfficialRev = parseFloat(record.daily_revenue) || 0;
+        if (editModalZReceipt) {
+            if (Math.abs(savedOfficialRev - savedCalculatedRev) >= 0.01 && savedOfficialRev > 0) {
+                editModalZReceipt.value = savedOfficialRev;
+            } else {
+                editModalZReceipt.value = '';
+            }
+        }
+
         let addedEmployees = 0;
         employeeRows.forEach((row) => {
             const name = row.querySelector('.name-input').value.trim();
@@ -618,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addedEmployees++;
             const empData = workedEmployees.find(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name);
             const isChecked = empData ? 'checked' : '';
-            const isPaidFromDrawer = empData && empData.paid_from_drawer !== false;
+            const isPaidFromDrawer = empData ? (empData.paid_from_drawer !== false) : true;
             
             const div = document.createElement('div');
             div.className = 'flex items-center justify-between p-1 hover:bg-gray-100 rounded transition-colors';
@@ -632,12 +643,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     Από Ταμείο
                 </label>
             `;
+            div.querySelectorAll('input').forEach(inp => {
+                inp.addEventListener('change', updateEditModalBreakdown);
+            });
             editModalEmployeesList.appendChild(div);
         });
 
         if (addedEmployees === 0) {
             editModalEmployeesList.innerHTML = '<p class="text-sm text-gray-500 italic px-1">Δεν υπάρχουν καταχωρημένοι εργαζόμενοι στο σύστημα.</p>';
         }
+
+        updateEditExpensesUI();
+        updateEditModalBreakdown();
 
         // Εμφάνιση Modal
         editRecordModal.classList.remove('hidden');
@@ -738,7 +755,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return resultObj;
         });
 
-        const newRevenue = posRev + cashRev + drawerExpenses + totalWages;
+        const calculatedRevenue = posRev + cashRev + drawerExpenses + totalWages;
+        const editZ = editModalZReceipt && editModalZReceipt.value !== '' ? (parseFloat(editModalZReceipt.value) || 0) : 0;
+        const newRevenue = editZ > 0 ? editZ : calculatedRevenue;
 
         if (isNaN(newRevenue) || newRevenue < 0) {
             showToast('Παρακαλώ εισάγετε έγκυρους αριθμούς.', 'warning');
@@ -746,8 +765,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let newFoodCost = 0;
-        if (newRevenue > 0) {
-            newFoodCost = (agathoExpenses / newRevenue) * 100;
+        const netNewRevenue = newRevenue / (1 + appState.AVERAGE_VAT_RATE);
+        if (netNewRevenue > 0) {
+            newFoodCost = (agathoExpenses / netNewRevenue) * 100;
         }
 
         try {
@@ -967,7 +987,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
+        const netOfficialRevenue = officialRevenue / (1 + appState.AVERAGE_VAT_RATE);
+        const fcPercentage = netOfficialRevenue > 0 ? (agathoExpenses / netOfficialRevenue) * 100 : 0;
 
         const payload = {
             date: dateStr,
@@ -1088,7 +1109,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     [posTotal, drawerCash, zReceipt].forEach(el => {
-        el.addEventListener('input', updateModalDrawerStatus);
+        if (el) el.addEventListener('input', updateModalDrawerStatus);
+    });
+
+    [editModalPosRevenue, editModalCashRevenue, editModalZReceipt].forEach(el => {
+        if (el) el.addEventListener('input', updateEditModalBreakdown);
+    });
+
+    // --- Γρήγορα Πρότυπα Εξόδων (Quick Chips) ---
+    document.querySelectorAll('.modal-quick-exp-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (expenseDescInput) expenseDescInput.value = btn.dataset.quickDesc || '';
+            if (expenseCategoryInput) expenseCategoryInput.value = btn.dataset.quickCat || 'agatho';
+            if (expenseAmountInput) expenseAmountInput.focus();
+        });
+    });
+
+    document.querySelectorAll('.edit-quick-exp-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (editExpenseDescInput) editExpenseDescInput.value = btn.dataset.quickDesc || '';
+            if (editExpenseCategoryInput) editExpenseCategoryInput.value = btn.dataset.quickCat || 'agatho';
+            if (editExpenseAmountInput) editExpenseAmountInput.focus();
+        });
     });
 
     // --- Αποθήκευση στον Server (POST request) ---
@@ -1169,7 +1211,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const fcPercentage = officialRevenue > 0 ? (agathoExpenses / officialRevenue) * 100 : 0;
+        const netOfficialRevenue = officialRevenue / (1 + appState.AVERAGE_VAT_RATE);
+        const fcPercentage = netOfficialRevenue > 0 ? (agathoExpenses / netOfficialRevenue) * 100 : 0;
 
         const payload = {
             date: dateStr,

@@ -48,6 +48,10 @@ export const dayActionModal = document.getElementById('dayActionModal');
 export const actionExpensesBtn = document.getElementById('actionExpensesBtn');
 export const actionClosureBtn = document.getElementById('actionClosureBtn');
 export const closeDayActionModalBtn = document.getElementById('closeDayActionModalBtn');
+export const actionModalDateLabel = document.getElementById('actionModalDateLabel');
+export const actionModalExistingRecords = document.getElementById('actionModalExistingRecords');
+export const actionModalExistingList = document.getElementById('actionModalExistingList');
+export const actionClosureTitle = document.getElementById('actionClosureTitle');
 
 export const dayModal = document.getElementById('dayModal');
 export const modalDateDisplay = document.getElementById('modalDateDisplay');
@@ -80,6 +84,8 @@ export const editRecordModal = document.getElementById('editRecordModal');
 export const editModalDateDisplay = document.getElementById('editModalDateDisplay');
 export const editModalPosRevenue = document.getElementById('editModalPosRevenue');
 export const editModalCashRevenue = document.getElementById('editModalCashRevenue');
+export const editModalZReceipt = document.getElementById('editModalZReceipt');
+export const editModalRevenueBreakdown = document.getElementById('editModalRevenueBreakdown');
 export const editModalEmployeesList = document.getElementById('editModalEmployeesList');
 export const closeEditModalBtn = document.getElementById('closeEditModalBtn');
 export const closeEditModalIconBtn = document.getElementById('closeEditModalIconBtn');
@@ -106,6 +112,7 @@ export const modalTotalExpensesDisplay = document.getElementById('modalTotalExpe
 export const posTotal = document.getElementById('posTotal');
 export const drawerCash = document.getElementById('drawerCash');
 export const zReceipt = document.getElementById('zReceipt');
+export const modalRevenueBreakdown = document.getElementById('modalRevenueBreakdown');
 export const modalDrawerStatus = document.getElementById('modalDrawerStatus');
 export const saveModalDayBtn = document.getElementById('saveModalDayBtn');
 export const modalCashierName = document.getElementById('modalCashierName');
@@ -117,6 +124,8 @@ export const modalRevenueSection = document.getElementById('modalRevenueSection'
 export const foodCostChartCanvas = document.getElementById('foodCostChart');
 
 export const reportNetRevenueDisplay = document.getElementById('reportNetRevenueDisplay');
+export const reportNetProfitAfterIka = document.getElementById('reportNetProfitAfterIka');
+export const reportVatBreakdownDisplay = document.getElementById('reportVatBreakdownDisplay');
 export const dailyNetRevenueDisplayEl = document.getElementById('dailyNetRevenueDisplay');
 export const dailyBurnRateDisplayEl = document.getElementById('dailyBurnRateDisplay');
 export const reportForecastProfit = document.getElementById('reportForecastProfit');
@@ -317,6 +326,48 @@ export const renderCalendar = () => {
             renderCalendar(); 
             
             appState.actionModalTarget = { year, month, day };
+            if (actionModalDateLabel) {
+                actionModalDateLabel.textContent = `(${day}/${month + 1}/${year})`;
+            }
+            if (actionModalExistingRecords && actionModalExistingList) {
+                actionModalExistingList.innerHTML = '';
+                if (savedRecords.length > 0) {
+                    actionModalExistingRecords.classList.remove('hidden');
+                    actionModalExistingRecords.classList.add('flex');
+                    if (actionClosureTitle) {
+                        actionClosureTitle.textContent = `Νέο Κλείσιμο Ταμείου (${savedRecords.length + 1}η Βάρδια)`;
+                    }
+                    savedRecords.forEach((rec, idx) => {
+                        const cashier = rec.cashier_name || `Βάρδια ${idx + 1}`;
+                        const rev = parseFloat(rec.daily_revenue) || 0;
+                        const exp = parseFloat(rec.total_expenses) || 0;
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm';
+                        rowDiv.innerHTML = `
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-slate-800 block truncate">👤 ${cashier}</span>
+                                <span class="text-[11px] text-slate-500 tabular-nums">Τζίρος: <b>${formatCurrency(rev)}</b> | Έξοδα: ${formatCurrency(exp)}</span>
+                            </div>
+                            <button type="button" class="edit-existing-shift-btn bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 flex-shrink-0">
+                                <span>✏️</span> Διόρθωση
+                            </button>
+                        `;
+                        rowDiv.querySelector('.edit-existing-shift-btn').addEventListener('click', () => {
+                            dayActionModal.classList.add('hidden');
+                            if (typeof window.editRecord === 'function') {
+                                window.editRecord(rec.id, rec.date);
+                            }
+                        });
+                        actionModalExistingList.appendChild(rowDiv);
+                    });
+                } else {
+                    actionModalExistingRecords.classList.add('hidden');
+                    actionModalExistingRecords.classList.remove('flex');
+                    if (actionClosureTitle) {
+                        actionClosureTitle.textContent = 'Κλείσιμο Ταμείου';
+                    }
+                }
+            }
             if (dayActionModal) dayActionModal.classList.remove('hidden');
         });
         
@@ -345,6 +396,24 @@ export const updateModalDrawerStatus = () => {
     const pos = parseFloat(posTotal.value) || 0;
     const cash = parseFloat(drawerCash.value) || 0;
     const actualTotalRevenue = pos + cash + drawerExpenses + totalWages;
+
+    if (modalRevenueBreakdown) {
+        modalRevenueBreakdown.innerHTML = `
+            <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+                <span>💳 POS: <b class="text-slate-700">${formatCurrency(pos)}</b></span>
+                <span>+</span>
+                <span>💵 Συρτάρι: <b class="text-slate-700">${formatCurrency(cash)}</b></span>
+                <span>+</span>
+                <span>🧾 Έξοδα Ταμ.: <b class="text-slate-700">${formatCurrency(drawerExpenses)}</b></span>
+                <span>+</span>
+                <span>👥 Μεροκ. Ταμ.: <b class="text-slate-700">${formatCurrency(totalWages)}</b></span>
+            </div>
+            <div class="pt-1.5 mt-1 border-t border-slate-200/80 flex items-center justify-between text-xs font-bold text-slate-800">
+                <span>📊 Υπολογισμένος Τζίρος Ταμείου:</span>
+                <span class="text-primary text-sm">${formatCurrency(actualTotalRevenue)}</span>
+            </div>
+        `;
+    }
     
     if (zReceipt.value !== '') {
         const z = parseFloat(zReceipt.value) || 0;
@@ -359,19 +428,89 @@ export const updateModalDrawerStatus = () => {
             'shadow-sm', 'tabular-nums'
         );
         modalDrawerStatus.classList.add('border', 'shadow-sm', 'tabular-nums');
-        if (diff === 0) {
-            modalDrawerStatus.textContent = '✓ Ταμείο ΟΚ';
+        if (Math.abs(diff) < 0.01) {
+            modalDrawerStatus.textContent = '✓ Ταμείο ΟΚ (Ακριβής συμφωνία με Ζ)';
             modalDrawerStatus.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-300');
         } else if (diff < 0) {
-            modalDrawerStatus.textContent = `⚠️ Λείπουν ${Math.abs(diff).toFixed(2)} €`;
+            modalDrawerStatus.textContent = `⚠️ Λείπουν ${Math.abs(diff).toFixed(2)} € σε σχέση με το Ζ`;
             modalDrawerStatus.classList.add('bg-rose-50', 'text-rose-800', 'border-rose-300');
         } else {
-            modalDrawerStatus.textContent = `ℹ️ Πλεόνασμα ${diff.toFixed(2)} €`;
+            modalDrawerStatus.textContent = `ℹ️ Πλεόνασμα ${diff.toFixed(2)} € σε σχέση με το Ζ`;
             modalDrawerStatus.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
         }
     } else {
         modalDrawerStatus.classList.add('hidden');
     }
+};
+
+export const updateEditModalBreakdown = () => {
+    if (!editModalRevenueBreakdown) return;
+    const pos = parseFloat(editModalPosRevenue?.value) || 0;
+    const cash = parseFloat(editModalCashRevenue?.value) || 0;
+    const zVal = editModalZReceipt?.value !== '' ? (parseFloat(editModalZReceipt?.value) || 0) : null;
+
+    let drawerExpenses = 0;
+    (appState.currentEditExpenses || []).forEach(exp => {
+        if (exp.paidFromDrawer !== false) drawerExpenses += parseFloat(exp.amount) || 0;
+    });
+
+    let drawerWages = 0;
+    if (editModalEmployeesList) {
+        const checkboxes = editModalEmployeesList.querySelectorAll('.edit-employee-checkbox:checked');
+        checkboxes.forEach(cb => {
+            const name = cb.value;
+            const container = cb.closest('.flex.items-center.justify-between');
+            const paidCb = container?.querySelector('.edit-employee-paid-drawer');
+            const isPaidFromDrawer = paidCb ? paidCb.checked : true;
+            if (!isPaidFromDrawer) return;
+
+            const existing = (appState.currentEditRecordWorkedEmployees || []).find(emp => (typeof emp === 'string' ? emp : emp.staff_id) === name);
+            if (existing && typeof existing === 'object' && existing.total_cost !== undefined) {
+                drawerWages += parseFloat(existing.total_cost) || 0;
+            } else {
+                const empRow = Array.from(employeeListEl.querySelectorAll('.employee-row')).find(row => row.querySelector('.name-input').value.trim() === name);
+                if (empRow) {
+                    const rate = parseFloat(empRow.querySelector('.rate-input').value) || 0;
+                    const dateObj = new Date(appState.currentEditRecordDate || new Date());
+                    const dayOfWeek = dateObj.getDay();
+                    const dayWrapper = empRow.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
+                    const hours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 8;
+                    drawerWages += rate * hours;
+                }
+            }
+        });
+    }
+
+    const calculatedRev = pos + cash + drawerExpenses + drawerWages;
+    const officialRev = (zVal !== null && zVal > 0) ? zVal : calculatedRev;
+    let zDiffHtml = '';
+    if (zVal !== null && zVal > 0) {
+        const diff = calculatedRev - zVal;
+        if (Math.abs(diff) < 0.01) {
+            zDiffHtml = `<div class="text-[11px] font-semibold text-emerald-700 mt-1">✓ Συμφωνία με Ζ (${formatCurrency(zVal)})</div>`;
+        } else if (diff < 0) {
+            zDiffHtml = `<div class="text-[11px] font-semibold text-rose-700 mt-1">⚠️ Διαφορά από Ζ (${formatCurrency(zVal)}): Λείπουν ${formatCurrency(Math.abs(diff))}</div>`;
+        } else {
+            zDiffHtml = `<div class="text-[11px] font-semibold text-amber-700 mt-1">ℹ️ Διαφορά από Ζ (${formatCurrency(zVal)}): Πλεόνασμα ${formatCurrency(diff)}</div>`;
+        }
+    }
+
+    editModalRevenueBreakdown.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+            <span>💳 POS: <b class="text-slate-700">${formatCurrency(pos)}</b></span>
+            <span>+</span>
+            <span>💵 Συρτάρι: <b class="text-slate-700">${formatCurrency(cash)}</b></span>
+            <span>+</span>
+            <span>🧾 Έξοδα Ταμ.: <b class="text-slate-700">${formatCurrency(drawerExpenses)}</b></span>
+            <span>+</span>
+            <span>👥 Μεροκ. Ταμ.: <b class="text-slate-700">${formatCurrency(drawerWages)}</b></span>
+        </div>
+        <div class="pt-1.5 mt-1 border-t border-slate-200/80 flex items-center justify-between text-xs font-bold text-slate-800">
+            <span>📊 Επίσημος Τζίρος που θα αποθηκευτεί:</span>
+            <span class="text-primary text-sm">${formatCurrency(officialRev)}</span>
+        </div>
+        ${zDiffHtml}
+    `;
 };
 
 export const renderMonthlyChart = (records, wageMap) => {
@@ -416,7 +555,10 @@ export const renderMonthlyChart = (records, wageMap) => {
             let empId = typeof emp === 'string' ? emp : emp.staff_id;
             let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
             
-            if (!group.workedNames.has(empId)) {
+            if (typeof emp === 'object' && emp !== null) {
+                group.totalWages += wage;
+                group.workedNames.add(empId);
+            } else if (!group.workedNames.has(empId)) {
                 group.totalWages += wage;
                 group.workedNames.add(empId);
             }
@@ -779,6 +921,7 @@ export const updateEditExpensesUI = () => {
         });
     }
     if (editModalTotalExpensesDisplay) editModalTotalExpensesDisplay.textContent = formatCurrency(total);
+    updateEditModalBreakdown();
 };
 
 export const updateDashExpensesUI = () => {
@@ -910,9 +1053,10 @@ export const updateCalculations = () => {
     }
 
     const monthlyFixed = appState.MONTHLY_FIXED_COSTS;
-    const weeklyFixed = monthlyFixed / 4.3;
+    const daysInSelectedMonth = new Date(appState.currentDate.getFullYear(), appState.currentDate.getMonth() + 1, 0).getDate() || 30;
+    const weeklyFixed = monthlyFixed / (daysInSelectedMonth / 7);
     
-    const dailyBurnRate = monthlyFixed / 30;
+    const dailyBurnRate = monthlyFixed / daysInSelectedMonth;
     if (dailyBurnRateDisplayEl) dailyBurnRateDisplayEl.textContent = formatCurrency(dailyBurnRate);
 
     let totalPersonnelWeekly = 0;
@@ -1018,11 +1162,13 @@ export const renderMonthlyTable = (records, wageMap) => {
                 let empId = typeof emp === 'string' ? emp : emp.staff_id;
                 let wage = typeof emp === 'string' ? (wageMap[emp] || 0) : (parseFloat(emp.total_cost) || 0);
                 
-                if (!group.workedNames.has(empId)) {
+                if (typeof emp === 'object' && emp !== null) {
                     group.totalWages += wage;
                     group.workedNames.add(empId);
-                    
                     if (emp.paid_from_drawer === false) group.totalWagesOut += wage;
+                } else if (!group.workedNames.has(empId)) {
+                    group.totalWages += wage;
+                    group.workedNames.add(empId);
                 }
             });
         });
