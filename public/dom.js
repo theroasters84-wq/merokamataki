@@ -198,7 +198,7 @@ export const renderCalendar = () => {
 
     for (let i = 0; i < emptyDays; i++) {
         const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'bg-slate-50/70 rounded-xl p-1 sm:p-2 min-h-[64px] sm:min-h-[88px] border border-slate-100 opacity-50';
+        emptyDiv.className = 'bg-slate-50/70 rounded-xl p-1.5 sm:p-2 min-h-[85px] sm:min-h-[100px] border border-slate-100 opacity-50';
         calendarGrid.appendChild(emptyDiv);
     }
 
@@ -207,7 +207,7 @@ export const renderCalendar = () => {
 
     for (let day = 1; day <= daysInMonth; day++) {
         const dayDiv = document.createElement('div');
-        dayDiv.className = 'bg-white rounded-xl p-1 sm:p-2 min-h-[64px] sm:min-h-[88px] border border-slate-200/80 hover:border-primary hover:shadow-md active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-between md:justify-start overflow-hidden group';
+        dayDiv.className = 'bg-white rounded-xl p-1.5 sm:p-2 min-h-[85px] sm:min-h-[100px] border border-slate-200/80 hover:border-primary hover:shadow-md active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-start overflow-hidden group';
         
         const isToday = isCurrentMonthYear && day === now.getDate();
         const selectedDate = new Date(recordDateEl.value || new Date());
@@ -226,7 +226,6 @@ export const renderCalendar = () => {
         });
 
         let employeesHtml = '';
-        let mobileIndicatorHtml = '';
 
         if (savedRecords.length > 0) {
             let allWorked = [];
@@ -239,30 +238,23 @@ export const renderCalendar = () => {
             });
             
             if (allWorked.length > 0) {
-                employeesHtml = '<div class="hidden md:flex mt-1 flex-col gap-1">' +
+                employeesHtml = '<div class="mt-1 flex flex-col gap-1">' +
                     allWorked.map(emp => {
-                        if (typeof emp === 'string') return `<span class="text-xs bg-indigo-100 text-indigo-800 rounded px-1 whitespace-normal break-words" title="${emp}">${emp}</span>`;
+                        if (typeof emp === 'string') return `<span class="text-[10px] md:text-xs bg-indigo-100 text-indigo-800 rounded px-1 py-0.5 leading-tight whitespace-normal break-words" title="${emp}">${emp}</span>`;
                         const name = emp.staff_id || 'Άγνωστος';
                         let emoji = emp.shift_type === 'morning' ? '☀️ ' : (emp.shift_type === 'night' ? '🌙 ' : (emp.shift_type === 'split' ? '⚡ ' : ''));
                         let timeRanges = [];
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
-                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-xs bg-emerald-50 text-emerald-800 rounded-md px-1.5 py-0.5 border border-emerald-200/80 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] md:text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] md:text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
+                        return `<div class="text-[10px] md:text-xs bg-emerald-50 text-emerald-800 rounded-md px-1 sm:px-1.5 py-0.5 border border-emerald-200/80 leading-tight shadow-sm whitespace-normal break-words" title="${name}"><b>${emoji}${name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
             } else {
-                employeesHtml = `<div class="hidden md:flex mt-1"><span class="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-md px-1.5 py-0.5 font-semibold">✓ Ταμείο ΟΚ</span></div>`;
+                const isAdmin = localStorage.getItem('isAdmin') === 'true';
+                const compactRev = dayTotalRev > 0 ? `<span class="admin-only ${isAdmin ? '' : 'hidden'} ml-0.5">${Math.round(dayTotalRev)}€</span>` : '';
+                employeesHtml = `<div class="mt-1 flex flex-col gap-1"><span class="text-[10px] md:text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-md px-1 sm:px-1.5 py-0.5 font-semibold leading-tight whitespace-normal break-words">✓ Ταμείο ΟΚ${compactRev}</span></div>`;
             }
-
-            const isAdmin = localStorage.getItem('isAdmin') === 'true';
-            const compactRev = dayTotalRev > 0 ? `<span class="admin-only ${isAdmin ? '' : 'hidden'} ml-0.5">${Math.round(dayTotalRev)}€</span>` : '';
-            mobileIndicatorHtml = `
-                <div class="md:hidden mt-auto pt-1 flex flex-col items-center gap-0.5 w-full">
-                    <span class="w-full text-center text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-300/70 rounded-md py-0.5 px-0.5 leading-none truncate tabular-nums">✓${compactRev}</span>
-                    ${allWorked.length > 0 ? `<span class="text-[9px] font-semibold text-slate-500 leading-none">${allWorked.length}👤</span>` : ''}
-                </div>
-            `;
         } else {
             const currentDayOfWeek = new Date(year, month, day).getDay();
             const employeeRows = Array.from(employeeListEl.querySelectorAll('.employee-row'));
@@ -294,22 +286,16 @@ export const renderCalendar = () => {
             }).filter(emp => emp.name !== '');
             
             if (workingEmployees.length > 0) {
-                employeesHtml = '<div class="hidden md:flex mt-1 flex-col gap-1 opacity-75" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' +
+                employeesHtml = '<div class="mt-1 flex flex-col gap-1 opacity-75" title="Προγραμματισμένο (Μη Αποθηκευμένο)">' +
                     workingEmployees.map(emp => {
                         let emoji = emp.shift === 'morning' ? '☀️ ' : (emp.shift === 'night' ? '🌙 ' : (emp.shift === 'split' ? '⚡ ' : ''));
                         let timeRanges = [];
                         if (emp.time_from && emp.time_to) timeRanges.push(`${emp.time_from}-${emp.time_to}`);
                         if (emp.time_from_2 && emp.time_to_2) timeRanges.push(`${emp.time_from_2}-${emp.time_to_2}`);
-                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
-                        return `<div class="text-xs bg-slate-50 text-slate-600 rounded-md px-1.5 py-0.5 border border-dashed border-slate-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
+                        let slotsStr = timeRanges.length > 0 ? `<br><span class="text-[9px] md:text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${timeRanges.join(', ')}</span>` : (emp.time_slots && emp.time_slots.length > 0 ? `<br><span class="text-[9px] md:text-[11px] text-gray-500 font-normal tracking-tighter leading-none">${formatTimeSlots(emp.time_slots)}</span>` : '');
+                        return `<div class="text-[10px] md:text-xs bg-slate-50 text-slate-600 rounded-md px-1 sm:px-1.5 py-0.5 border border-dashed border-slate-300 leading-tight whitespace-normal break-words"><b>${emoji}${emp.name}</b>${slotsStr}</div>`;
                     }).join('') + 
                     '</div>';
-
-                mobileIndicatorHtml = `
-                    <div class="md:hidden mt-auto pt-1 flex items-center justify-center w-full">
-                        <span class="text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/80 rounded-full px-1.5 py-0.5 leading-none tabular-nums">${workingEmployees.length}👤</span>
-                    </div>
-                `;
             }
         }
 
@@ -318,12 +304,11 @@ export const renderCalendar = () => {
             : 'text-xs sm:text-sm font-bold text-slate-700 group-hover:text-primary';
 
         dayDiv.innerHTML = `
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-0.5">
                 <span class="${dayBadgeClass} tabular-nums">${day}</span>
-                ${savedRecords.length > 0 ? '<span class="hidden md:inline-block w-2 h-2 rounded-full bg-emerald-500" title="Καταχωρημένο Ταμείο"></span>' : ''}
+                ${savedRecords.length > 0 ? '<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" title="Καταχωρημένο Ταμείο"></span>' : ''}
             </div>
             ${employeesHtml}
-            ${mobileIndicatorHtml}
         `;
         
         dayDiv.addEventListener('click', () => {
