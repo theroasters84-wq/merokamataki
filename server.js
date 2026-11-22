@@ -131,8 +131,9 @@ const createMailTransporter = () => {
   const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
   // Αφαίρεση τυχόν κενών από το 16-ψήφιο Gmail App Password
   const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
-  const smtpHost = (process.env.SMTP_HOST || '').trim();
+  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  const isSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
 
   const timeoutConfig = {
     connectionTimeout: 10000,
@@ -140,18 +141,12 @@ const createMailTransporter = () => {
     socketTimeout: 15000
   };
 
-  if (smtpHost) {
-    return nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
-      auth: { user: smtpUser, pass: smtpPass },
-      ...timeoutConfig
-    });
-  }
-
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: smtpHost,
+    port: smtpPort,
+    secure: isSecure,
+    requireTLS: !isSecure,
+    family: 4, // Αυστηρή χρήση IPv4 για αποφυγή IPv6 ENETUNREACH σε cloud περιβάλλοντα (π.χ. Render)
     auth: { user: smtpUser, pass: smtpPass },
     ...timeoutConfig
   });
@@ -196,6 +191,102 @@ const handleForgotPassword = async (req, res) => {
       [tokenHash, tokenExpiry, user.id]
     );
 
+    const configuredAppUrl = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
+    const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol || 'http';
+    const domain = req.headers.host || `localhost:${port}`;
+    const baseUrl = configuredAppUrl || `${protocol}://${domain}`;
+    const resetUrl = `${baseUrl}/?resetToken=${resetToken}`;
+
+    const emailSubject = 'Επαναφορά Κωδικού Πρόσβασης - Μεροκαματάκι';
+    const emailText = `Έχετε ζητήσει επαναφορά του κωδικού σας στο Μεροκαματάκι.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό πρόσβασης (ισχύει για 30 λεπτά):\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`;
+    const emailHtml = `
+        <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+          <h2 style="margin-top: 0; color: #0f172a;">💼 Μεροκαματάκι — Ανάκτηση Κωδικού</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">Λάβαμε αίτημα επαναφοράς του κωδικού πρόσβασης για τον λογαριασμό σας.</p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-size: 14px;">Ορισμός Νέου Κωδικού</a>
+          </div>
+          <p style="font-size: 12px; line-height: 1.5; color: #64748b;">Ο σύνδεσμος είναι αυστηρά προσωπικός και <b>λήγει σε 30 λεπτά</b>. Αν το κουμπί δεν ανοίγει, αντιγράψτε τον παρακάτω σύνδεσμο στον browser σας:</p>
+          <p style="font-size: 12px; word-break: break-all; color: #3b82f6;">${resetUrl}</p>
+          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Αν δεν ζητήσατε εσείς επαναφορά κωδικού, μπορείτε να αγνοήσετε με ασφάλεια αυτό το μήνυμα.</p>
+        </div>
+      `;
+
+    const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+    const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+    const senderEmail = (process.env.EMAIL_USER || process.env.MAIL_FROM || process.env.SMTP_USER || '').trim();
+
+    // 1. Προτεραιότητα Α: Αποστολή μέσω Brevo HTTPS API (Port 443 - παρακάμπτει μπλοκάρισμα SMTP θυρών)
+    if (brevoApiKey) {
+      if (!senderEmail) {
+        console.error('[Email Config Error] BREVO_API_KEY is set, but EMAIL_USER (or MAIL_FROM) is missing.');
+        return res.status(500).json({ error: 'Λείπει η διεύθυνση αποστολέα (EMAIL_USER / MAIL_FROM) στις ρυθμίσεις.' });
+      }
+
+      const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'api-key': brevoApiKey
+        },
+        body: JSON.stringify({
+          sender: { name: 'Μεροκαματάκι', email: senderEmail },
+          to: [{ email: user.email }],
+          subject: emailSubject,
+          htmlContent: emailHtml,
+          textContent: emailText
+        })
+      });
+
+      if (!brevoResponse.ok) {
+        const errBody = await brevoResponse.text().catch(() => 'Unable to read response body');
+        console.error('[Brevo API Error] Αποτυχία αποστολής email μέσω Brevo HTTPS API:', {
+          status: brevoResponse.status,
+          statusText: brevoResponse.statusText,
+          details: errBody
+        });
+        return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email μέσω υπηρεσίας API.' });
+      }
+
+      return res.json({ message: neutralSuccessMessage });
+    }
+
+    // 2. Προτεραιότητα Β: Αποστολή μέσω Resend HTTPS API (Port 443 - παρακάμπτει μπλοκάρισμα SMTP θυρών)
+    if (resendApiKey) {
+      const resendFrom = senderEmail ? `Μεροκαματάκι <${senderEmail}>` : 'Μεροκαματάκι <onboarding@resend.dev>';
+
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: [user.email],
+          subject: emailSubject,
+          html: emailHtml,
+          text: emailText
+        })
+      });
+
+      if (!resendResponse.ok) {
+        const errBody = await resendResponse.text().catch(() => 'Unable to read response body');
+        console.error('[Resend API Error] Αποτυχία αποστολής email μέσω Resend HTTPS API:', {
+          status: resendResponse.status,
+          statusText: resendResponse.statusText,
+          details: errBody
+        });
+        return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email μέσω υπηρεσίας API.' });
+      }
+
+      return res.json({ message: neutralSuccessMessage });
+    }
+
+    // 3. Fallback: Αποστολή μέσω SMTP (Nodemailer με IPv4 & STARTTLS port 587)
     const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
     const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
     if (!smtpUser || !smtpPass) {
@@ -203,7 +294,7 @@ const handleForgotPassword = async (req, res) => {
       if (!smtpUser) missingVars.push('EMAIL_USER (ή SMTP_USER)');
       if (!smtpPass) missingVars.push('EMAIL_PASS (ή SMTP_PASS)');
       console.error(
-        `[SMTP Config Error] Forgot password failed: Λείπουν οι μεταβλητές περιβάλλοντος: ${missingVars.join(', ')}. Ελέγξτε το αρχείο .env ή τα Environment Variables του server.`
+        `[SMTP Config Error] Forgot password failed: Λείπουν οι μεταβλητές περιβάλλοντος: ${missingVars.join(', ')} (ή BREVO_API_KEY / RESEND_API_KEY). Ελέγξτε το αρχείο .env ή τα Environment Variables του server.`
       );
       return res.status(500).json({ error: 'Ο διακομιστής email (SMTP) δεν έχει ρυθμιστεί ακόμα.' });
     }
@@ -233,31 +324,12 @@ const handleForgotPassword = async (req, res) => {
       return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Ελέγξτε τις ρυθμίσεις του SMTP.' });
     }
 
-    const configuredAppUrl = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
-    const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
-    const protocol = forwardedProto || req.protocol || 'http';
-    const domain = req.headers.host || `localhost:${port}`;
-    const baseUrl = configuredAppUrl || `${protocol}://${domain}`;
-    const resetUrl = `${baseUrl}/?resetToken=${resetToken}`;
-
     const mailOptions = {
       from: `"Μεροκαματάκι" <${smtpUser}>`,
       to: user.email,
-      subject: 'Επαναφορά Κωδικού Πρόσβασης - Μεροκαματάκι',
-      text: `Έχετε ζητήσει επαναφορά του κωδικού σας στο Μεροκαματάκι.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό πρόσβασης (ισχύει για 30 λεπτά):\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`,
-      html: `
-        <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
-          <h2 style="margin-top: 0; color: #0f172a;">💼 Μεροκαματάκι — Ανάκτηση Κωδικού</h2>
-          <p style="font-size: 14px; line-height: 1.6; color: #475569;">Λάβαμε αίτημα επαναφοράς του κωδικού πρόσβασης για τον λογαριασμό σας.</p>
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-size: 14px;">Ορισμός Νέου Κωδικού</a>
-          </div>
-          <p style="font-size: 12px; line-height: 1.5; color: #64748b;">Ο σύνδεσμος είναι αυστηρά προσωπικός και <b>λήγει σε 30 λεπτά</b>. Αν το κουμπί δεν ανοίγει, αντιγράψτε τον παρακάτω σύνδεσμο στον browser σας:</p>
-          <p style="font-size: 12px; word-break: break-all; color: #3b82f6;">${resetUrl}</p>
-          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
-          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Αν δεν ζητήσατε εσείς επαναφορά κωδικού, μπορείτε να αγνοήσετε με ασφάλεια αυτό το μήνυμα.</p>
-        </div>
-      `
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml
     };
 
     await transporter.sendMail(mailOptions);
