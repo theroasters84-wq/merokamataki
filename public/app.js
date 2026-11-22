@@ -115,6 +115,58 @@ const initApp = () => {
         });
     }
 
+    // --- Λογική Legal Modal (Όροι Χρήσης & Πολιτική Απορρήτου GDPR) ---
+    const legalModal = document.getElementById('legalModal');
+    const closeLegalModalBtn = document.getElementById('closeLegalModalBtn');
+    const closeLegalModalBottomBtn = document.getElementById('closeLegalModalBottomBtn');
+    const legalTabTermsBtn = document.getElementById('legalTabTermsBtn');
+    const legalTabPrivacyBtn = document.getElementById('legalTabPrivacyBtn');
+    const legalTermsPanel = document.getElementById('legalTermsPanel');
+    const legalPrivacyPanel = document.getElementById('legalPrivacyPanel');
+
+    const switchLegalTab = (tabName) => {
+        const isPrivacy = tabName === 'privacy';
+        if (legalTermsPanel) legalTermsPanel.classList.toggle('hidden', isPrivacy);
+        if (legalPrivacyPanel) legalPrivacyPanel.classList.toggle('hidden', !isPrivacy);
+
+        if (legalTabTermsBtn) {
+            legalTabTermsBtn.className = !isPrivacy
+                ? 'flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm'
+                : 'flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+        }
+        if (legalTabPrivacyBtn) {
+            legalTabPrivacyBtn.className = isPrivacy
+                ? 'flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm'
+                : 'flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+        }
+    };
+
+    const openLegalModal = (tabName = 'terms') => {
+        switchLegalTab(tabName);
+        if (legalModal) legalModal.classList.remove('hidden');
+    };
+
+    const closeLegalModal = () => {
+        if (legalModal) legalModal.classList.add('hidden');
+    };
+
+    document.querySelectorAll('[data-open-legal]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openLegalModal(btn.getAttribute('data-open-legal') || 'terms');
+        });
+    });
+
+    if (legalTabTermsBtn) legalTabTermsBtn.addEventListener('click', () => switchLegalTab('terms'));
+    if (legalTabPrivacyBtn) legalTabPrivacyBtn.addEventListener('click', () => switchLegalTab('privacy'));
+    if (closeLegalModalBtn) closeLegalModalBtn.addEventListener('click', closeLegalModal);
+    if (closeLegalModalBottomBtn) closeLegalModalBottomBtn.addEventListener('click', closeLegalModal);
+    if (legalModal) {
+        legalModal.addEventListener('click', (e) => {
+            if (e.target === legalModal) closeLegalModal();
+        });
+    }
+
     // --- Auth Λογική ---
     const { checkAuth, logout } = initAuth({
         onAuthSuccess: async () => {
@@ -1200,6 +1252,9 @@ const initApp = () => {
             }
             if (helpModal && !helpModal.classList.contains('hidden')) {
                 closeHelp();
+            }
+            if (legalModal && !legalModal.classList.contains('hidden')) {
+                closeLegalModal();
             }
         }
     });

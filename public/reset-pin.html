@@ -57,6 +57,7 @@
                 msgEl.classList.remove('hidden');
                 
                 if (res.ok) {
+                    localStorage.setItem('hasPin', 'true');
                     msgEl.className = 'mt-4 p-3 rounded text-center text-sm font-medium bg-green-100 text-green-800';
                     msgEl.textContent = 'Το PIN ενημερώθηκε επιτυχώς!';
                     document.getElementById('resetForm').classList.add('hidden');

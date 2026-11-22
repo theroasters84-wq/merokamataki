@@ -13,7 +13,78 @@ const port = process.env.PORT || 3000;
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
+
+// JSON Error Handler για malformed JSON payloads & 413 Payload Too Large (επιστροφή καθαρού JSON αντί για HTML stack trace)
+app.use((err, req, res, next) => {
+  if (err) {
+    if (err.type === 'entity.too.large' || err.status === 413) {
+      return res.status(413).json({ error: 'Το μέγεθος του αιτήματος υπερβαίνει το επιτρεπτό όριο.' });
+    }
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({ error: 'Μη έγκυρη μορφή δεδομένων JSON.' });
+    }
+    if (err.status && err.status >= 400 && err.status < 500) {
+      return res.status(err.status).json({ error: 'Μη έγκυρο αίτημα.' });
+    }
+  }
+  next(err);
+});
+
+// Εξασφάλιση ότι το req.body είναι πάντα έγκυρο αντικείμενο (προστασία όταν λείπει το Content-Type header)
+app.use((req, res, next) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    req.body = {};
+  }
+  next();
+});
+
+// --- Ελαφρύς In-Memory Rate Limiter για προστασία ευαίσθητων Auth / PIN endpoints ---
+const rateLimitStore = new Map();
+const createRateLimiter = ({ windowMs = 60 * 1000, max = 80, keyPrefix = 'global' } = {}) => {
+  return (req, res, next) => {
+    const now = Date.now();
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const clientIp = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '') || req.ip || 'unknown';
+    const key = `${keyPrefix}:${clientIp}`;
+
+    let entry = rateLimitStore.get(key);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 1, resetAt: now + windowMs };
+      rateLimitStore.set(key, entry);
+      return next();
+    }
+
+    entry.count += 1;
+    if (entry.count > max) {
+      const retryAfterSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+      res.set('Retry-After', String(retryAfterSec));
+      return res.status(429).json({
+        error: 'Πάρα πολλά αιτήματα σε σύντομο χρονικό διάστημα. Παρακαλώ περιμένετε λίγο και δοκιμάστε ξανά.'
+      });
+    }
+
+    next();
+  };
+};
+
+// Περιοδικός καθαρισμός ληγμένων εγγραφών rate limiter (χωρίς να κρατάει ανοιχτό το event loop)
+const rateLimitCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (now > entry.resetAt) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 60 * 1000);
+if (typeof rateLimitCleanupTimer.unref === 'function') {
+  rateLimitCleanupTimer.unref();
+}
+
+const registerRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 80, keyPrefix: 'register' });
+const loginRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 80, keyPrefix: 'login' });
+const forgotPasswordRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60, keyPrefix: 'forgot_pw' });
+const pinVerifyRateLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 40, keyPrefix: 'pin_verify' });
 
 // Εξυπηρέτηση στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
@@ -58,44 +129,75 @@ app.get('/api/check-token', authenticateToken, (req, res) => {
 
 // --- Endpoints Ταυτοποίησης (Auth) ---
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', registerRateLimiter, async (req, res) => {
   try {
-    const { email, password, store_id } = req.body;
+    const { email, password, store_id, termsAccepted } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'Παρακαλώ συμπληρώστε email και κωδικό.' });
 
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος δεδομένων για email ή κωδικό.' });
+    }
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || cleanEmail.length > 254) {
+      return res.status(400).json({ error: 'Το email δεν είναι έγκυρο ή υπερβαίνει το μέγιστο επιτρεπτό μήκος (254 χαρακτήρες).' });
+    }
+
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'Ο κωδικός πρόσβασης υπερβαίνει το μέγιστο επιτρεπτό μήκος.' });
+    }
+
+    // Έλεγχος αποδοχής Όρων Χρήσης & Πολιτικής Απορρήτου (με διατήρηση backward compatibility αν το πεδίο δεν σταλεί από παλαιότερο client)
+    if (termsAccepted !== undefined && termsAccepted !== true && termsAccepted !== 'true') {
+      return res.status(400).json({ error: 'Απαιτείται η αποδοχή των Όρων Χρήσης και της Πολιτικής Απορρήτου για την εγγραφή.' });
+    }
+
     // Έλεγχος αν το email υπάρχει ήδη
-    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [cleanEmail]);
     if (userCheck.rows.length > 0) {
       return res.status(400).json({ error: 'Το email χρησιμοποιείται ήδη.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Εύρεση του επόμενου διαθέσιμου store_id (μέγιστο υπάρχον + 1)
-    const maxStoreQuery = await pool.query('SELECT MAX(store_id) FROM users');
-    const maxStoreId = maxStoreQuery.rows[0].max || 0;
-    const assignedStoreId = maxStoreId + 1;
+    // Ατομική απόδοση μοναδικού store_id μέσω PostgreSQL sequence (εξάλειψη race condition του SELECT MAX(store_id))
+    const maxStoreQuery = await pool.query("SELECT nextval('users_store_id_seq') AS next_store_id");
+    const assignedStoreId = parseInt(maxStoreQuery.rows[0].next_store_id, 10);
+
+    const termsAcceptedAt = (termsAccepted === true || termsAccepted === 'true') ? new Date() : null;
 
     const query = `
-      INSERT INTO users (email, password_hash, store_id)
-      VALUES ($1, $2, $3) RETURNING id, email, store_id
+      INSERT INTO users (email, password_hash, store_id, terms_accepted_at)
+      VALUES ($1, $2, $3, $4) RETURNING id, email, store_id
     `;
-    const result = await pool.query(query, [email, hashedPassword, assignedStoreId]);
+    const result = await pool.query(query, [cleanEmail, hashedPassword, assignedStoreId, termsAcceptedAt]);
 
     res.status(201).json({ message: 'Ο χρήστης δημιουργήθηκε επιτυχώς!', user: result.rows[0] });
   } catch (error) {
+    if (error && error.code === '23505') {
+      return res.status(400).json({ error: 'Το email χρησιμοποιείται ήδη.' });
+    }
     console.error('Register error:', error);
     res.status(500).json({ error: 'Σφάλμα κατά την εγγραφή.' });
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginRateLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'Παρακαλώ συμπληρώστε email και κωδικό.' });
 
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος δεδομένων για email ή κωδικό.' });
+    }
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || cleanEmail.length > 254 || password.length > 128) {
+      return res.status(400).json({ error: 'Το email ή ο κωδικός υπερβαίνει το μέγιστο επιτρεπτό μήκος.' });
+    }
+
     const query = 'SELECT * FROM users WHERE email = $1';
-    const result = await pool.query(query, [email]);
+    const result = await pool.query(query, [cleanEmail]);
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Λάθος email ή κωδικός.' });
@@ -154,11 +256,16 @@ const createMailTransporter = () => {
 
 const handleForgotPassword = async (req, res) => {
   try {
-    console.log('[Forgot Password] Request received on:', req.method, req.originalUrl);
-    const rawEmail = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : '';
-    if (!rawEmail) {
-      console.log('[Forgot Password] Validation failed: empty email in request body');
+    const body = req.body || {};
+    if (body.email === undefined || body.email === null || body.email === '') {
       return res.status(400).json({ error: 'Παρακαλώ εισάγετε το email σας.' });
+    }
+    if (typeof body.email !== 'string') {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος δεδομένων για το email.' });
+    }
+    const rawEmail = body.email.trim().toLowerCase();
+    if (!rawEmail || rawEmail.length > 254) {
+      return res.status(400).json({ error: 'Παρακαλώ εισάγετε ένα έγκυρο email.' });
     }
 
     const neutralSuccessMessage = 'Εάν το email είναι καταχωρημένο στο σύστημα, σας έχουμε αποστείλει σύνδεσμο επαναφοράς κωδικού.';
@@ -168,7 +275,6 @@ const handleForgotPassword = async (req, res) => {
 
     // Επιστρέφουμε πάντα ουδέτερο μήνυμα επιτυχίας ώστε να μην αποκαλύπτεται αν υπάρχει το email στη βάση
     if (userResult.rows.length === 0) {
-      console.log('[Forgot Password] No matching user found');
       return res.json({ message: neutralSuccessMessage });
     }
 
@@ -228,7 +334,6 @@ const handleForgotPassword = async (req, res) => {
         return res.status(500).json({ error: 'Λείπει η διεύθυνση αποστολέα (EMAIL_USER / MAIL_FROM) στις ρυθμίσεις.' });
       }
 
-      console.log('[Forgot Password] Sending via Brevo API...');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -245,8 +350,6 @@ const handleForgotPassword = async (req, res) => {
         })
       });
 
-      console.log('[Forgot Password] Brevo response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unable to read response body');
         console.error('[Brevo API Error]', response.status, errorText);
@@ -255,8 +358,6 @@ const handleForgotPassword = async (req, res) => {
 
       return res.json({ message: neutralSuccessMessage });
     }
-
-    console.log('[Forgot Password] BREVO_API_KEY not found in environment, checking fallback providers...');
 
     // 2. Προτεραιότητα Β: Αποστολή μέσω Resend HTTPS API (Port 443 - παρακάμπτει μπλοκάρισμα SMTP θυρών)
     if (resendApiKey) {
@@ -358,11 +459,22 @@ const handleResetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
     }
 
-    if (String(newPassword).length < 6) {
+    if (typeof token !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος δεδομένων.' });
+    }
+
+    if (newPassword.length < 6) {
       return res.status(400).json({ error: 'Ο νέος κωδικός πρέπει να αποτελείται από τουλάχιστον 6 χαρακτήρες.' });
     }
 
-    const cleanToken = String(token).trim();
+    if (newPassword.length > 128 || token.length > 512) {
+      return res.status(400).json({ error: 'Τα στοιχεία υπερβαίνουν το μέγιστο επιτρεπτό μήκος.' });
+    }
+
+    const cleanToken = token.trim();
+    if (!cleanToken) {
+      return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
+    }
     const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
 
     // 1. Έλεγχος στον πίνακα password_reset_tokens με βάση το SHA-256 hash
@@ -394,7 +506,7 @@ const handleResetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Ο σύνδεσμος επαναφοράς είναι μη έγκυρος, έχει ήδη χρησιμοποιηθεί ή έχει λήξει.' });
     }
 
-    const hashedPassword = await bcrypt.hash(String(newPassword), 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await pool.query(
       'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
@@ -415,8 +527,8 @@ const handleResetPassword = async (req, res) => {
   }
 };
 
-app.post('/api/auth/forgot-password', handleForgotPassword);
-app.post('/api/forgot-password', handleForgotPassword);
+app.post('/api/auth/forgot-password', forgotPasswordRateLimiter, handleForgotPassword);
+app.post('/api/forgot-password', forgotPasswordRateLimiter, handleForgotPassword);
 
 app.post('/api/auth/reset-password', handleResetPassword);
 app.post('/api/reset-password', handleResetPassword);
@@ -425,9 +537,12 @@ app.post('/api/reset-password', handleResetPassword);
 
 app.post('/api/pin/set', authenticateToken, async (req, res) => {
   try {
-    const { pin } = req.body;
+    const { pin } = req.body || {};
     const userId = req.user.user_id;
     if (!pin) return res.status(400).json({ error: 'Παρακαλώ δώστε το νέο PIN.' });
+    if (typeof pin !== 'string' || pin.length > 64) {
+      return res.status(400).json({ error: 'Μη έγκυρη μορφή ή μήκος PIN.' });
+    }
 
     const hashedPin = await bcrypt.hash(pin, 10);
     await pool.query('UPDATE users SET admin_pin = $1 WHERE id = $2', [hashedPin, userId]);
@@ -439,11 +554,14 @@ app.post('/api/pin/set', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/pin/verify', authenticateToken, async (req, res) => {
+app.post('/api/pin/verify', authenticateToken, pinVerifyRateLimiter, async (req, res) => {
   try {
-    const { pin } = req.body;
+    const { pin } = req.body || {};
     const userId = req.user.user_id;
     if (!pin) return res.status(400).json({ error: 'Παρακαλώ δώστε το PIN.' });
+    if (typeof pin !== 'string' || pin.length > 64) {
+      return res.status(400).json({ error: 'Μη έγκυρη μορφή ή μήκος PIN.' });
+    }
     
     const result = await pool.query('SELECT admin_pin FROM users WHERE id = $1', [userId]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Χρήστης δεν βρέθηκε.' });
@@ -459,57 +577,229 @@ app.post('/api/pin/verify', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/pin/forgot', authenticateToken, async (req, res) => {
+app.post('/api/pin/forgot', authenticateToken, forgotPasswordRateLimiter, async (req, res) => {
   try {
     const userId = req.user.user_id;
     const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
     
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'Χρήστης δεν βρέθηκε.' });
     
-    const email = userResult.rows[0].email;
+    const email = String(userResult.rows[0].email || '').trim();
     const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
     const tokenExpiry = new Date(Date.now() + 3600000); // Λήξη σε 1 ώρα
 
+    // Αποθήκευση SHA-256 hash στη βάση (με υποστήριξη backward compatibility στο /api/pin/reset)
     await pool.query(
       'UPDATE users SET pin_reset_token = $1, pin_reset_token_expiry = $2 WHERE id = $3',
-      [resetToken, tokenExpiry, userId]
+      [tokenHash, tokenExpiry, userId]
     );
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    const configuredAppUrl = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
+    const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol || 'http';
+    const domain = req.headers.host || `localhost:${port}`;
+    const baseUrl = configuredAppUrl || `${protocol}://${domain}`;
+    const resetUrl = `${baseUrl}/reset-pin.html?token=${resetToken}`;
 
-    const domain = req.headers.host || 'localhost:3000';
-    const resetUrl = `http://${domain}/reset-pin.html?token=${resetToken}`;
+    const emailSubject = 'Επαναφορά PIN Ιδιοκτήτη - Μεροκαματάκι';
+    const emailText = `Έχετε ζητήσει επαναφορά του PIN Ιδιοκτήτη.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο PIN (ισχύει για 1 ώρα):\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`;
+    const emailHtml = `
+      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+        <h2 style="margin-top: 0; color: #0f172a;">🔑 Μεροκαματάκι — Επαναφορά PIN Ιδιοκτήτη</h2>
+        <p style="font-size: 14px; line-height: 1.6; color: #475569;">Λάβαμε αίτημα επαναφοράς του PIN Ιδιοκτήτη για το κατάστημά σας.</p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-size: 14px;">Ορισμός Νέου PIN</a>
+        </div>
+        <p style="font-size: 12px; line-height: 1.5; color: #64748b;">Ο σύνδεσμος είναι αυστηρά προσωπικός και <b>λήγει σε 1 ώρα</b>. Αν το κουμπί δεν ανοίγει, αντιγράψτε τον παρακάτω σύνδεσμο στον browser σας:</p>
+        <p style="font-size: 12px; word-break: break-all; color: #3b82f6;">${resetUrl}</p>
+        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
+        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Αν δεν ζητήσατε εσείς επαναφορά PIN, μπορείτε να αγνοήσετε με ασφάλεια αυτό το μήνυμα.</p>
+      </div>
+    `;
+
+    const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+    const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+    const senderEmail = (process.env.EMAIL_USER || process.env.MAIL_FROM || process.env.SMTP_USER || '').trim();
+
+    // 1. Προτεραιότητα Α: Αποστολή μέσω Brevo HTTPS API (Port 443)
+    if (brevoApiKey) {
+      if (!senderEmail) {
+        console.error('[Email Config Error] BREVO_API_KEY is set, but EMAIL_USER (or MAIL_FROM) is missing.');
+        return res.status(500).json({ error: 'Λείπει η διεύθυνση αποστολέα (EMAIL_USER / MAIL_FROM) στις ρυθμίσεις.' });
+      }
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'api-key': brevoApiKey
+        },
+        body: JSON.stringify({
+          sender: { name: 'Μεροκαματάκι', email: senderEmail },
+          to: [{ email }],
+          subject: emailSubject,
+          htmlContent: emailHtml,
+          textContent: emailText
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read response body');
+        console.error('[Brevo API Error - PIN Forgot]', response.status, errorText);
+        return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email μέσω υπηρεσίας API.' });
+      }
+
+      return res.json({ message: 'Το email επαναφοράς PIN εστάλη επιτυχώς.' });
+    }
+
+    // 2. Προτεραιότητα Β: Αποστολή μέσω Resend HTTPS API (Port 443)
+    if (resendApiKey) {
+      const resendFrom = senderEmail ? `Μεροκαματάκι <${senderEmail}>` : 'Μεροκαματάκι <onboarding@resend.dev>';
+
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: [email],
+          subject: emailSubject,
+          html: emailHtml,
+          text: emailText
+        })
+      });
+
+      if (!resendResponse.ok) {
+        const errBody = await resendResponse.text().catch(() => 'Unable to read response body');
+        console.error('[Resend API Error - PIN Forgot] Αποτυχία αποστολής email μέσω Resend HTTPS API:', {
+          status: resendResponse.status,
+          statusText: resendResponse.statusText,
+          details: errBody
+        });
+        return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email μέσω υπηρεσίας API.' });
+      }
+
+      return res.json({ message: 'Το email επαναφοράς PIN εστάλη επιτυχώς.' });
+    }
+
+    // 3. Fallback: Αποστολή μέσω SMTP (Nodemailer με IPv4 & STARTTLS port 587)
+    const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+    const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
+    if (!smtpUser || !smtpPass) {
+      console.error('[SMTP Config Error - PIN Forgot] Λείπουν οι ρυθμίσεις email (BREVO_API_KEY / RESEND_API_KEY / EMAIL_USER / EMAIL_PASS).');
+      return res.status(500).json({ error: 'Ο διακομιστής email δεν έχει ρυθμιστεί. Χρησιμοποιήστε την επαναφορά με τον Κωδικό Λογαριασμού.' });
+    }
+
+    const transporter = createMailTransporter();
+
+    try {
+      await Promise.race([
+        transporter.verify(),
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            const timeoutErr = new Error('SMTP verify timed out after 10000ms');
+            timeoutErr.code = 'ETIMEDOUT';
+            timeoutErr.command = 'VERIFY';
+            reject(timeoutErr);
+          }, 10000)
+        )
+      ]);
+    } catch (verifyErr) {
+      console.error('[SMTP Verify Error - PIN Forgot] Αποτυχία επαλήθευσης σύνδεσης SMTP:', {
+        code: verifyErr.code || 'UNKNOWN_CODE',
+        responseCode: verifyErr.responseCode || null,
+        command: verifyErr.command || 'VERIFY',
+        message: verifyErr.message || 'Unknown verify error'
+      });
+      return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Μπορείτε να επαναφέρετε το PIN άμεσα με τον Κωδικό Λογαριασμού.' });
+    }
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Μεροκαματάκι" <${smtpUser}>`,
       to: email,
-      subject: 'Επαναφορά PIN Ιδιοκτήτη - Μεροκαματάκι',
-      text: `Έχετε ζητήσει επαναφορά του PIN Ιδιοκτήτη.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο PIN:\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml
     };
 
     await transporter.sendMail(mailOptions);
     res.json({ message: 'Το email επαναφοράς PIN εστάλη επιτυχώς.' });
   } catch (error) {
-    console.error('Forgot PIN error:', error);
+    console.error('[Forgot PIN Error]', {
+      code: error.code || 'UNKNOWN_CODE',
+      message: error.message || 'Unknown error'
+    });
     res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email επαναφοράς PIN.' });
+  }
+});
+
+app.post('/api/pin/reset-with-password', authenticateToken, pinVerifyRateLimiter, async (req, res) => {
+  try {
+    const { password, newPin } = req.body || {};
+    const userId = req.user.user_id;
+    const storeId = req.user.storeId;
+
+    if (!password || !newPin) {
+      return res.status(400).json({ error: 'Παρακαλώ συμπληρώστε τον κωδικό λογαριασμού και το νέο PIN.' });
+    }
+    if (typeof password !== 'string' || typeof newPin !== 'string') {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος δεδομένων.' });
+    }
+    const cleanPin = newPin.trim();
+    if (!cleanPin || cleanPin.length > 64 || password.length > 128) {
+      return res.status(400).json({ error: 'Μη έγκυρη μορφή ή μήκος στοιχείων.' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT id, store_id, password_hash FROM users WHERE id = $1 AND COALESCE(store_id, 1) = $2',
+      [userId, storeId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Ο χρήστης δεν βρέθηκε.' });
+    }
+
+    const user = userResult.rows[0];
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Λάθος κωδικός πρόσβασης λογαριασμού.' });
+    }
+
+    const hashedPin = await bcrypt.hash(cleanPin, 10);
+    await pool.query(
+      'UPDATE users SET admin_pin = $1, pin_reset_token = NULL, pin_reset_token_expiry = NULL WHERE id = $2 AND COALESCE(store_id, 1) = $3',
+      [hashedPin, userId, storeId]
+    );
+
+    res.json({ success: true, message: 'Το νέο PIN Ιδιοκτήτη αποθηκεύτηκε επιτυχώς!' });
+  } catch (error) {
+    console.error('Reset PIN with password error:', error);
+    res.status(500).json({ error: 'Σφάλμα κατά την επαναφορά του PIN.' });
   }
 });
 
 app.post('/api/pin/reset', async (req, res) => {
   try {
-    const { token, newPin } = req.body;
+    const { token, newPin } = req.body || {};
     if (!token || !newPin) return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
-    const query = 'SELECT * FROM users WHERE pin_reset_token = $1 AND pin_reset_token_expiry > NOW()';
-    const result = await pool.query(query, [token]);
+    if (typeof token !== 'string' || typeof newPin !== 'string' || newPin.length > 64 || token.length > 512) {
+      return res.status(400).json({ error: 'Μη έγκυρος τύπος ή μήκος στοιχείων.' });
+    }
+    const cleanToken = token.trim();
+    const cleanPin = newPin.trim();
+    if (!cleanToken || !cleanPin) {
+      return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
+    }
+    const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
+
+    const query = 'SELECT * FROM users WHERE (pin_reset_token = $1 OR pin_reset_token = $2) AND pin_reset_token_expiry > NOW()';
+    const result = await pool.query(query, [tokenHash, cleanToken]);
     if (result.rows.length === 0) return res.status(400).json({ error: 'Το token είναι μη έγκυρο ή έχει λήξει.' });
     const user = result.rows[0];
-    const hashedPin = await bcrypt.hash(newPin, 10);
+    const hashedPin = await bcrypt.hash(cleanPin, 10);
     await pool.query('UPDATE users SET admin_pin = $1, pin_reset_token = NULL, pin_reset_token_expiry = NULL WHERE id = $2', [hashedPin, user.id]);
     res.json({ message: 'Το PIN σας ενημερώθηκε επιτυχώς!' });
   } catch (error) {
@@ -541,8 +831,16 @@ app.get('/api/settings', authenticateToken, async (req, res) => {
 
 app.post('/api/settings', authenticateToken, async (req, res) => {
   try {
-    const { fixed_overheads, owner_insurance, vat_rate } = req.body;
-    await pool.query('UPDATE users SET fixed_overheads = $1, owner_insurance = $2, vat_rate = $3 WHERE store_id = $4', [fixed_overheads, owner_insurance, vat_rate, req.user.storeId]);
+    const { fixed_overheads, owner_insurance, vat_rate } = req.body || {};
+    const parsedOverheads = fixed_overheads !== undefined && fixed_overheads !== null && fixed_overheads !== '' ? Number(fixed_overheads) : 0;
+    const parsedInsurance = owner_insurance !== undefined && owner_insurance !== null && owner_insurance !== '' ? Number(owner_insurance) : 0;
+    const parsedVat = vat_rate !== undefined && vat_rate !== null && vat_rate !== '' ? Number(vat_rate) : 13;
+
+    if (!Number.isFinite(parsedOverheads) || !Number.isFinite(parsedInsurance) || !Number.isFinite(parsedVat)) {
+      return res.status(400).json({ error: 'Μη έγκυρες αριθμητικές τιμές στις ρυθμίσεις.' });
+    }
+
+    await pool.query('UPDATE users SET fixed_overheads = $1, owner_insurance = $2, vat_rate = $3 WHERE store_id = $4', [parsedOverheads, parsedInsurance, parsedVat, req.user.storeId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Error setting settings:', error);
@@ -562,19 +860,33 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/employees/bulk', authenticateToken, async (req, res) => {
+  const { employees } = req.body || {};
+  if (!Array.isArray(employees)) {
+    return res.status(400).json({ error: 'Μη έγκυρα δεδομένα προσωπικού (απαιτείται πίνακας employees).' });
+  }
+
+  for (const emp of employees) {
+    if (!emp || typeof emp !== 'object' || typeof emp.name !== 'string' || !emp.name.trim() || emp.name.length > 255) {
+      return res.status(400).json({ error: 'Μη έγκυρο όνομα υπαλλήλου.' });
+    }
+    const rate = Number(emp.hourly_rate ?? 0);
+    if (!Number.isFinite(rate) || rate < 0) {
+      return res.status(400).json({ error: 'Μη έγκυρο ωρομίσθιο υπαλλήλου.' });
+    }
+  }
+
   const client = await pool.getClient();
   try {
     await client.query('BEGIN');
     // Καθαρίζουμε τους παλιούς για το κατάστημα και βάζουμε τους νέους με τη μία (Συγχρονισμός)
     await client.query('DELETE FROM dashboard_employees WHERE store_id = $1', [req.user.storeId]);
     
-    const { employees } = req.body;
     if (employees && employees.length > 0) {
       for (const emp of employees) {
         await client.query(
           `INSERT INTO dashboard_employees (store_id, name, hourly_rate, schedule, daily_wage, days_per_week)
            VALUES ($1, $2, $3, $4, 0, 0)`,
-          [req.user.storeId, emp.name, emp.hourly_rate, JSON.stringify(emp.schedule)]
+          [req.user.storeId, emp.name.trim(), Number(emp.hourly_rate ?? 0), JSON.stringify(emp.schedule || {})]
         );
       }
     }
@@ -592,13 +904,34 @@ app.post('/api/employees/bulk', authenticateToken, async (req, res) => {
 app.post('/api/daily-records', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
-    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body;
+    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body || {};
+
+    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(date.trim()) || Number.isNaN(Date.parse(date))) {
+      return res.status(400).json({ error: 'Μη έγκυρη ημερομηνία καταγραφής.' });
+    }
+
+    const parsedDailyRev = Number(daily_revenue);
+    const parsedCashRev = cash_revenue !== undefined && cash_revenue !== null && cash_revenue !== '' ? Number(cash_revenue) : 0;
+    const parsedPosRev = pos_revenue !== undefined && pos_revenue !== null && pos_revenue !== '' ? Number(pos_revenue) : 0;
+    const parsedTotalExp = Number(total_expenses);
+    const parsedFoodCost = Number(food_cost_percentage);
+
+    if (
+      daily_revenue === undefined || daily_revenue === null || daily_revenue === '' || !Number.isFinite(parsedDailyRev) ||
+      total_expenses === undefined || total_expenses === null || total_expenses === '' || !Number.isFinite(parsedTotalExp) ||
+      food_cost_percentage === undefined || food_cost_percentage === null || food_cost_percentage === '' || !Number.isFinite(parsedFoodCost) ||
+      !Number.isFinite(parsedCashRev) || !Number.isFinite(parsedPosRev)
+    ) {
+      return res.status(400).json({ error: 'Μη έγκυρες αριθμητικές τιμές στην ημερήσια καταγραφή.' });
+    }
+
+    const safeCashierName = cashier_name && typeof cashier_name === 'string' ? cashier_name.trim().slice(0, 255) : null;
     
     const query = `
       INSERT INTO dashboard_daily_records (store_id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `;
-    const values = [store_id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), cashier_name || null];
+    const values = [store_id, date.trim(), parsedDailyRev, parsedCashRev, parsedPosRev, parsedTotalExp, parsedFoodCost, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), safeCashierName];
     
     await pool.query(query, values);
     
@@ -613,6 +946,12 @@ app.get('/api/daily-records/:month/:year', authenticateToken, async (req, res) =
   try {
     const store_id = req.user.storeId;
     const { month, year } = req.params;
+    const parsedMonth = Number(month);
+    const parsedYear = Number(year);
+
+    if (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12 || !Number.isInteger(parsedYear) || parsedYear < 1970 || parsedYear > 2100) {
+      return res.status(400).json({ error: 'Μη έγκυρος μήνας ή έτος.' });
+    }
     
     const query = `
       SELECT id, date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name
@@ -620,7 +959,7 @@ app.get('/api/daily-records/:month/:year', authenticateToken, async (req, res) =
       WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
       ORDER BY date ASC
     `;
-    const result = await pool.query(query, [store_id, month, year]);
+    const result = await pool.query(query, [store_id, parsedMonth, parsedYear]);
     
     res.json(result.rows);
   } catch (error) {
@@ -633,14 +972,40 @@ app.put('/api/daily-records/:id', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
     const { id } = req.params;
-    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body;
+    const parsedId = Number(id);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return res.status(400).json({ error: 'Μη έγκυρο αναγνωριστικό εγγραφής.' });
+    }
+
+    const { date, daily_revenue, cash_revenue, pos_revenue, total_expenses, food_cost_percentage, worked_employees, detailed_expenses, cashier_name } = req.body || {};
+
+    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(date.trim()) || Number.isNaN(Date.parse(date))) {
+      return res.status(400).json({ error: 'Μη έγκυρη ημερομηνία καταγραφής.' });
+    }
+
+    const parsedDailyRev = Number(daily_revenue);
+    const parsedCashRev = cash_revenue !== undefined && cash_revenue !== null && cash_revenue !== '' ? Number(cash_revenue) : 0;
+    const parsedPosRev = pos_revenue !== undefined && pos_revenue !== null && pos_revenue !== '' ? Number(pos_revenue) : 0;
+    const parsedTotalExp = Number(total_expenses);
+    const parsedFoodCost = Number(food_cost_percentage);
+
+    if (
+      daily_revenue === undefined || daily_revenue === null || daily_revenue === '' || !Number.isFinite(parsedDailyRev) ||
+      total_expenses === undefined || total_expenses === null || total_expenses === '' || !Number.isFinite(parsedTotalExp) ||
+      food_cost_percentage === undefined || food_cost_percentage === null || food_cost_percentage === '' || !Number.isFinite(parsedFoodCost) ||
+      !Number.isFinite(parsedCashRev) || !Number.isFinite(parsedPosRev)
+    ) {
+      return res.status(400).json({ error: 'Μη έγκυρες αριθμητικές τιμές στην ημερήσια καταγραφή.' });
+    }
+
+    const safeCashierName = cashier_name && typeof cashier_name === 'string' ? cashier_name.trim().slice(0, 255) : null;
     
     const query = `
       UPDATE dashboard_daily_records
       SET date = $2, daily_revenue = $3, cash_revenue = $4, pos_revenue = $5, total_expenses = $6, food_cost_percentage = $7, worked_employees = $8, detailed_expenses = $9, cashier_name = $11
       WHERE id = $1 AND store_id = $10
     `;
-    const values = [id, date, daily_revenue, cash_revenue || 0, pos_revenue || 0, total_expenses, food_cost_percentage, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), store_id, cashier_name || null];
+    const values = [parsedId, date.trim(), parsedDailyRev, parsedCashRev, parsedPosRev, parsedTotalExp, parsedFoodCost, worked_employees ? JSON.stringify(worked_employees) : JSON.stringify([]), detailed_expenses ? JSON.stringify(detailed_expenses) : JSON.stringify([]), store_id, safeCashierName];
     
     await pool.query(query, values);
     
@@ -655,8 +1020,13 @@ app.delete('/api/daily-records/:id', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
     const { id } = req.params;
+    const parsedId = Number(id);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return res.status(400).json({ error: 'Μη έγκυρο αναγνωριστικό εγγραφής.' });
+    }
+
     const query = 'DELETE FROM dashboard_daily_records WHERE id = $1 AND store_id = $2';
-    await pool.query(query, [id, store_id]);
+    await pool.query(query, [parsedId, store_id]);
     
     res.json({ message: 'Η καταγραφή διαγράφηκε επιτυχώς!' });
   } catch (error) {
@@ -669,6 +1039,12 @@ app.get('/api/monthly-report/:month/:year', authenticateToken, async (req, res) 
   try {
     const store_id = req.user.storeId;
     const { month, year } = req.params;
+    const parsedMonth = Number(month);
+    const parsedYear = Number(year);
+
+    if (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12 || !Number.isInteger(parsedYear) || parsedYear < 1970 || parsedYear > 2100) {
+      return res.status(400).json({ error: 'Μη έγκυρος μήνας ή έτος.' });
+    }
     
     // Έλεγχος αν υπάρχει ήδη "κλεισμένος" μήνας
     const summaryQuery = `
@@ -676,7 +1052,7 @@ app.get('/api/monthly-report/:month/:year', authenticateToken, async (req, res) 
       FROM monthly_summaries 
       WHERE store_id = $1 AND month = $2 AND year = $3
     `;
-    const summaryResult = await pool.query(summaryQuery, [store_id, month, year]);
+    const summaryResult = await pool.query(summaryQuery, [store_id, parsedMonth, parsedYear]);
     
     if (summaryResult.rows.length > 0) {
       return res.json(summaryResult.rows[0]);
@@ -690,7 +1066,7 @@ app.get('/api/monthly-report/:month/:year', authenticateToken, async (req, res) 
       FROM dashboard_daily_records
       WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
     `;
-    const dailyResult = await pool.query(dailyQuery, [store_id, month, year]);
+    const dailyResult = await pool.query(dailyQuery, [store_id, parsedMonth, parsedYear]);
     
     const total_revenue = parseFloat(dailyResult.rows[0].total_revenue);
     const total_expenses = parseFloat(dailyResult.rows[0].total_expenses);
@@ -706,7 +1082,25 @@ app.get('/api/monthly-report/:month/:year', authenticateToken, async (req, res) 
 app.post('/api/monthly-report', authenticateToken, async (req, res) => {
   try {
     const store_id = req.user.storeId;
-    const { month, year, total_revenue, total_expenses, fixed_costs, net_profit, clearData } = req.body;
+    const { month, year, total_revenue, total_expenses, fixed_costs, net_profit, clearData } = req.body || {};
+
+    const parsedMonth = Number(month);
+    const parsedYear = Number(year);
+    const parsedRev = Number(total_revenue);
+    const parsedExp = Number(total_expenses);
+    const parsedFixed = fixed_costs !== undefined && fixed_costs !== null && fixed_costs !== '' ? Number(fixed_costs) : 0;
+    const parsedProfit = Number(net_profit);
+
+    if (
+      !Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12 ||
+      !Number.isInteger(parsedYear) || parsedYear < 1970 || parsedYear > 2100 ||
+      total_revenue === undefined || total_revenue === null || !Number.isFinite(parsedRev) ||
+      total_expenses === undefined || total_expenses === null || !Number.isFinite(parsedExp) ||
+      net_profit === undefined || net_profit === null || !Number.isFinite(parsedProfit) ||
+      !Number.isFinite(parsedFixed)
+    ) {
+      return res.status(400).json({ error: 'Μη έγκυρα στοιχεία μηνιαίας αναφοράς.' });
+    }
     
     const query = `
       INSERT INTO monthly_summaries (store_id, month, year, total_revenue, total_expenses, fixed_costs, net_profit)
@@ -717,14 +1111,14 @@ app.post('/api/monthly-report', authenticateToken, async (req, res) => {
           fixed_costs = EXCLUDED.fixed_costs,
           net_profit = EXCLUDED.net_profit
     `;
-    await pool.query(query, [store_id, month, year, total_revenue, total_expenses, fixed_costs, net_profit]);
+    await pool.query(query, [store_id, parsedMonth, parsedYear, parsedRev, parsedExp, parsedFixed, parsedProfit]);
     
     if (clearData) {
       const deleteQuery = `
         DELETE FROM dashboard_daily_records
         WHERE store_id = $1 AND EXTRACT(MONTH FROM date) = $2 AND EXTRACT(YEAR FROM date) = $3
       `;
-      await pool.query(deleteQuery, [store_id, month, year]);
+      await pool.query(deleteQuery, [store_id, parsedMonth, parsedYear]);
     }
     
     res.status(201).json({ message: 'Ο μήνας έκλεισε επιτυχώς!' });
@@ -738,12 +1132,18 @@ app.delete('/api/monthly-report/:month/:year', authenticateToken, async (req, re
   try {
     const store_id = req.user.storeId;
     const { month, year } = req.params;
+    const parsedMonth = Number(month);
+    const parsedYear = Number(year);
+
+    if (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12 || !Number.isInteger(parsedYear) || parsedYear < 1970 || parsedYear > 2100) {
+      return res.status(400).json({ error: 'Μη έγκυρος μήνας ή έτος.' });
+    }
     
     const query = `
       DELETE FROM monthly_summaries
       WHERE store_id = $1 AND month = $2 AND year = $3
     `;
-    await pool.query(query, [store_id, month, year]);
+    await pool.query(query, [store_id, parsedMonth, parsedYear]);
     
     res.json({ message: 'Η σύνοψη διαγράφηκε (Ο μήνας άνοιξε ξανά)!' });
   } catch (error) {

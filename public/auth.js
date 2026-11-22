@@ -1,4 +1,4 @@
-import { getToken, apiLogin, apiRegister, apiForgotPassword, apiResetPassword, apiSetPin, apiVerifyPin, apiForgotPin, apiCheckToken } from './api.js';
+import { getToken, safeJson, apiLogin, apiRegister, apiForgotPassword, apiResetPassword, apiSetPin, apiVerifyPin, apiForgotPin, apiResetPinWithPassword, apiCheckToken } from './api.js';
 import { showToast } from './utils.js';
 
 export function initAuth({ onAuthSuccess }) {
@@ -24,6 +24,8 @@ export function initAuth({ onAuthSuccess }) {
     const registerPassword = document.getElementById('registerPassword');
     const registerConfirmPassword = document.getElementById('registerConfirmPassword');
     const registerPasswordMismatchMsg = document.getElementById('registerPasswordMismatchMsg');
+    const registerAcceptTerms = document.getElementById('registerAcceptTerms');
+    const registerTermsErrorMsg = document.getElementById('registerTermsErrorMsg');
     const registerStoreName = document.getElementById('registerStoreName');
     const registerBtn = document.getElementById('registerBtn');
 
@@ -42,10 +44,21 @@ export function initAuth({ onAuthSuccess }) {
     const saveSetPinBtn = document.getElementById('saveSetPinBtn');
 
     const verifyPinModal = document.getElementById('verifyPinModal');
+    const verifyPinModalTitle = document.getElementById('verifyPinModalTitle');
+    const verifyPinEntryArea = document.getElementById('verifyPinEntryArea');
+    const recoverPinArea = document.getElementById('recoverPinArea');
     const verifyPinInput = document.getElementById('verifyPinInput');
     const verifyPinBtn = document.getElementById('verifyPinBtn');
     const closeVerifyPinBtn = document.getElementById('closeVerifyPinBtn');
     const forgotPinBtn = document.getElementById('forgotPinBtn');
+    const recoverPinAccountPassword = document.getElementById('recoverPinAccountPassword');
+    const recoverPinNewPinInput = document.getElementById('recoverPinNewPinInput');
+    const recoverPinConfirmPinInput = document.getElementById('recoverPinConfirmPinInput');
+    const recoverPinEmailBadge = document.getElementById('recoverPinEmailBadge');
+    const recoverPinFeedback = document.getElementById('recoverPinFeedback');
+    const resetPinWithPasswordBtn = document.getElementById('resetPinWithPasswordBtn');
+    const sendPinResetEmailBtn = document.getElementById('sendPinResetEmailBtn');
+    const backToVerifyPinBtn = document.getElementById('backToVerifyPinBtn');
 
     let sessionCheckInterval = null;
 
@@ -185,10 +198,11 @@ export function initAuth({ onAuthSuccess }) {
                 loginBtn.textContent = 'Σύνδεση...';
 
                 const res = await apiLogin(email, password);
-                const data = await res.json();
-                if (res.ok) {
+                const data = await safeJson(res);
+                if (res.ok && data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('hasPin', data.hasPin);
+                    if (data.email) localStorage.setItem('userEmail', data.email);
                     loginEmail.value = '';
                     loginPassword.value = '';
                     window.location.reload(); // Προχωράει στο Dashboard με καθαρό DOM
@@ -266,10 +280,8 @@ export function initAuth({ onAuthSuccess }) {
                 forgotPasswordSubmitBtn.textContent = 'Αποστολή...';
             }
 
-            console.log('[ForgotPassword UI] Submitting...');
             const res = await apiForgotPassword(email);
-            console.log('[ForgotPassword UI] Response:', res.status, res.url);
-            const data = await res.json();
+            const data = await safeJson(res);
 
             if (forgotPasswordFeedback) {
                 forgotPasswordFeedback.classList.remove('hidden');
@@ -370,7 +382,7 @@ export function initAuth({ onAuthSuccess }) {
                 resetPasswordSubmitBtn.textContent = 'Αποθήκευση...';
 
                 const res = await apiResetPassword(resetToken, newPassword);
-                const data = await res.json();
+                const data = await safeJson(res);
 
                 if (res.ok) {
                     showToast(data.message || 'Ο κωδικός σας ενημερώθηκε επιτυχώς!', 'success');
@@ -424,6 +436,21 @@ export function initAuth({ onAuthSuccess }) {
         registerConfirmPassword.addEventListener('input', checkLivePasswordMatch);
     }
 
+    const setRegisterTermsError = (hasError) => {
+        if (registerTermsErrorMsg) {
+            if (hasError) registerTermsErrorMsg.classList.remove('hidden');
+            else registerTermsErrorMsg.classList.add('hidden');
+        }
+    };
+
+    if (registerAcceptTerms) {
+        registerAcceptTerms.addEventListener('change', () => {
+            if (registerAcceptTerms.checked) {
+                setRegisterTermsError(false);
+            }
+        });
+    }
+
     if (registerBtn) {
         registerBtn.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -445,23 +472,33 @@ export function initAuth({ onAuthSuccess }) {
             }
             setPasswordMismatchError(false);
 
+            if (registerAcceptTerms && !registerAcceptTerms.checked) {
+                setRegisterTermsError(true);
+                registerAcceptTerms.focus();
+                return showToast('Πρέπει να αποδεχτείτε τους Όρους Χρήσης και την Πολιτική Απορρήτου για να εγγραφείτε.', 'warning');
+            }
+            setRegisterTermsError(false);
+
             try {
                 registerBtn.disabled = true;
                 registerBtn.textContent = 'Δημιουργία...';
 
-                const res = await apiRegister(email, password, storeName);
-                const data = await res.json();
+                const termsAccepted = registerAcceptTerms ? registerAcceptTerms.checked : true;
+                const res = await apiRegister(email, password, storeName, termsAccepted);
+                const data = await safeJson(res);
                 
                 if (res.ok) {
                     const loginRes = await apiLogin(email, password);
-                    const loginData = await loginRes.json();
+                    const loginData = await safeJson(loginRes);
                     
-                    if (loginRes.ok) {
+                    if (loginRes.ok && loginData.token) {
                         localStorage.setItem('token', loginData.token);
                         localStorage.setItem('hasPin', loginData.hasPin);
+                        if (loginData.email) localStorage.setItem('userEmail', loginData.email);
                         registerEmail.value = '';
                         registerPassword.value = '';
                         if (registerConfirmPassword) registerConfirmPassword.value = '';
+                        if (registerAcceptTerms) registerAcceptTerms.checked = false;
                         registerStoreName.value = '';
                         window.location.reload(); 
                     } else {
@@ -485,6 +522,7 @@ export function initAuth({ onAuthSuccess }) {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('isAdmin');
+        localStorage.removeItem('userEmail');
         stopSessionCheck();
         window.location.reload(); // Επιστροφή στην οθόνη login
     };
@@ -499,6 +537,47 @@ export function initAuth({ onAuthSuccess }) {
     // --- Secret Tap (Λειτουργία Υπαλλήλου) ---
     let tapCount = 0;
     let tapTimer = null;
+
+    const showVerifyPinView = (view = 'entry') => {
+        const isRecovery = view === 'recovery';
+        if (verifyPinEntryArea) verifyPinEntryArea.classList.toggle('hidden', isRecovery);
+        if (recoverPinArea) recoverPinArea.classList.toggle('hidden', !isRecovery);
+        if (verifyPinModalTitle) {
+            verifyPinModalTitle.textContent = isRecovery ? 'Επαναφορά PIN Ιδιοκτήτη' : 'Κρυφό Ξεκλείδωμα';
+        }
+        if (recoverPinEmailBadge) {
+            const storedEmail = localStorage.getItem('userEmail');
+            recoverPinEmailBadge.textContent = storedEmail ? ` (${storedEmail})` : '';
+        }
+        if (recoverPinFeedback) {
+            recoverPinFeedback.classList.add('hidden');
+            recoverPinFeedback.textContent = '';
+        }
+        if (isRecovery) {
+            if (recoverPinAccountPassword) {
+                recoverPinAccountPassword.value = '';
+                recoverPinAccountPassword.focus();
+            }
+            if (recoverPinNewPinInput) recoverPinNewPinInput.value = '';
+            if (recoverPinConfirmPinInput) recoverPinConfirmPinInput.value = '';
+        } else if (verifyPinInput) {
+            verifyPinInput.value = '';
+            verifyPinInput.focus();
+        }
+    };
+
+    const setRecoverPinFeedback = (message, type = 'error') => {
+        if (!recoverPinFeedback) return;
+        recoverPinFeedback.classList.remove('hidden');
+        if (type === 'success') {
+            recoverPinFeedback.className = 'p-3 rounded-xl text-xs font-medium border bg-emerald-50 text-emerald-800 border-emerald-200';
+        } else if (type === 'info') {
+            recoverPinFeedback.className = 'p-3 rounded-xl text-xs font-medium border bg-blue-50 text-blue-800 border-blue-200';
+        } else {
+            recoverPinFeedback.className = 'p-3 rounded-xl text-xs font-medium border bg-rose-50 text-rose-800 border-rose-200';
+        }
+        recoverPinFeedback.textContent = message;
+    };
 
     if (secretTapTitle) {
         secretTapTitle.addEventListener('click', () => {
@@ -515,9 +594,8 @@ export function initAuth({ onAuthSuccess }) {
                 
                 if (localStorage.getItem('hasPin') === 'true') {
                     if (verifyPinModal && verifyPinInput) {
-                        verifyPinInput.value = '';
                         verifyPinModal.classList.remove('hidden');
-                        verifyPinInput.focus();
+                        showVerifyPinView('entry');
                     }
                 } else {
                     if (setPinModal) setPinModal.classList.remove('hidden');
@@ -542,7 +620,7 @@ export function initAuth({ onAuthSuccess }) {
                     setPinModal.classList.add('hidden');
                     showToast('Το PIN αποθηκεύτηκε επιτυχώς!', 'success');
                 } else {
-                    const data = await res.json();
+                    const data = await safeJson(res);
                     showToast(data.error || 'Σφάλμα κατά την αποθήκευση PIN.', 'error');
                 }
             } catch (err) {
@@ -557,6 +635,7 @@ export function initAuth({ onAuthSuccess }) {
     if (closeVerifyPinBtn) {
         closeVerifyPinBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            showVerifyPinView('entry');
             verifyPinModal.classList.add('hidden');
         });
     }
@@ -564,6 +643,7 @@ export function initAuth({ onAuthSuccess }) {
     if (verifyPinModal) {
         verifyPinModal.addEventListener('click', (e) => {
             if (e.target === verifyPinModal) {
+                showVerifyPinView('entry');
                 verifyPinModal.classList.add('hidden');
             }
         });
@@ -579,7 +659,7 @@ export function initAuth({ onAuthSuccess }) {
                 verifyPinBtn.textContent = 'Έλεγχος...';
 
                 const res = await apiVerifyPin(pin);
-                const data = await res.json();
+                const data = await safeJson(res);
                 if (res.ok && data.success) {
                     verifyPinModal.classList.add('hidden');
                     localStorage.setItem('isAdmin', 'true');
@@ -597,22 +677,131 @@ export function initAuth({ onAuthSuccess }) {
         });
     }
 
-    if (forgotPinBtn) {
-        forgotPinBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                forgotPinBtn.disabled = true;
-                forgotPinBtn.textContent = 'Αποστολή...';
+    if (verifyPinInput) {
+        verifyPinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && verifyPinBtn) {
+                e.preventDefault();
+                verifyPinBtn.click();
+            }
+        });
+    }
 
-                const res = await apiForgotPin();
-                const data = await res.json();
-                if (res.ok) showToast('Ελέγξτε το email σας για οδηγίες ανάκτησης του PIN.', 'info');
-                else showToast(data.error || 'Σφάλμα κατά την αποστολή.', 'error');
+    if (forgotPinBtn) {
+        forgotPinBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showVerifyPinView('recovery');
+        });
+    }
+
+    if (backToVerifyPinBtn) {
+        backToVerifyPinBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showVerifyPinView('entry');
+        });
+    }
+
+    if (resetPinWithPasswordBtn) {
+        resetPinWithPasswordBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const accountPassword = recoverPinAccountPassword ? recoverPinAccountPassword.value : '';
+            const newPin = recoverPinNewPinInput ? recoverPinNewPinInput.value.trim() : '';
+            const confirmPin = recoverPinConfirmPinInput ? recoverPinConfirmPinInput.value.trim() : newPin;
+
+            if (!accountPassword) {
+                if (recoverPinAccountPassword) recoverPinAccountPassword.focus();
+                setRecoverPinFeedback('Παρακαλώ εισάγετε τον κωδικό πρόσβασης του λογαριασμού σας.', 'error');
+                return showToast('Εισάγετε τον κωδικό πρόσβασης του λογαριασμού σας.', 'warning');
+            }
+            if (!newPin) {
+                if (recoverPinNewPinInput) recoverPinNewPinInput.focus();
+                setRecoverPinFeedback('Παρακαλώ ορίστε το νέο σας PIN.', 'error');
+                return showToast('Παρακαλώ ορίστε το νέο σας PIN.', 'warning');
+            }
+            if (recoverPinConfirmPinInput && !confirmPin) {
+                recoverPinConfirmPinInput.focus();
+                setRecoverPinFeedback('Παρακαλώ επιβεβαιώστε το νέο σας PIN.', 'error');
+                return showToast('Παρακαλώ επιβεβαιώστε το νέο σας PIN.', 'warning');
+            }
+            if (newPin !== confirmPin) {
+                if (recoverPinConfirmPinInput) recoverPinConfirmPinInput.focus();
+                setRecoverPinFeedback('Τα πεδία του νέου PIN δεν ταιριάζουν μεταξύ τους.', 'error');
+                return showToast('Τα πεδία του νέου PIN δεν ταιριάζουν.', 'error');
+            }
+
+            try {
+                resetPinWithPasswordBtn.disabled = true;
+                resetPinWithPasswordBtn.textContent = 'Επαλήθευση...';
+
+                const res = await apiResetPinWithPassword(accountPassword, newPin);
+                const data = await safeJson(res);
+
+                if (res.ok && data.success) {
+                    localStorage.setItem('hasPin', 'true');
+                    localStorage.setItem('isAdmin', 'true');
+                    if (recoverPinAccountPassword) recoverPinAccountPassword.value = '';
+                    if (recoverPinNewPinInput) recoverPinNewPinInput.value = '';
+                    if (recoverPinConfirmPinInput) recoverPinConfirmPinInput.value = '';
+                    showVerifyPinView('entry');
+                    if (verifyPinModal) verifyPinModal.classList.add('hidden');
+                    enableAdminMode();
+                    showToast(data.message || 'Το νέο PIN ορίστηκε και ξεκλειδώθηκε η λειτουργία Διαχειριστή!', 'success');
+                } else {
+                    const errMsg = data.error || 'Αποτυχία επαναφοράς PIN. Ελέγξτε τον κωδικό σας.';
+                    setRecoverPinFeedback(errMsg, 'error');
+                    showToast(errMsg, 'error');
+                }
             } catch (err) {
+                setRecoverPinFeedback('Σφάλμα επικοινωνίας με τον server.', 'error');
                 showToast('Σφάλμα επικοινωνίας με τον server.', 'error');
             } finally {
-                forgotPinBtn.disabled = false;
-                forgotPinBtn.textContent = 'Ξέχασα το PIN';
+                resetPinWithPasswordBtn.disabled = false;
+                resetPinWithPasswordBtn.textContent = 'Αποθήκευση Νέου PIN & Ξεκλείδωμα';
+            }
+        });
+    }
+
+    if (recoverPinNewPinInput) {
+        recoverPinNewPinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && resetPinWithPasswordBtn) {
+                e.preventDefault();
+                resetPinWithPasswordBtn.click();
+            }
+        });
+    }
+
+    if (recoverPinConfirmPinInput) {
+        recoverPinConfirmPinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && resetPinWithPasswordBtn) {
+                e.preventDefault();
+                resetPinWithPasswordBtn.click();
+            }
+        });
+    }
+
+    if (sendPinResetEmailBtn) {
+        sendPinResetEmailBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                sendPinResetEmailBtn.disabled = true;
+                sendPinResetEmailBtn.textContent = 'Αποστολή email...';
+
+                const res = await apiForgotPin();
+                const data = await safeJson(res);
+                if (res.ok) {
+                    const msg = data.message || 'Ελέγξτε το email σας για τον σύνδεσμο επαναφοράς του PIN.';
+                    setRecoverPinFeedback(msg, 'success');
+                    showToast(msg, 'info');
+                } else {
+                    const errMsg = data.error || 'Σφάλμα κατά την αποστολή email.';
+                    setRecoverPinFeedback(errMsg, 'error');
+                    showToast(errMsg, 'error');
+                }
+            } catch (err) {
+                setRecoverPinFeedback('Σφάλμα επικοινωνίας με τον server.', 'error');
+                showToast('Σφάλμα επικοινωνίας με τον server.', 'error');
+            } finally {
+                sendPinResetEmailBtn.disabled = false;
+                sendPinResetEmailBtn.textContent = '📩 Αποστολή Συνδέσμου Επαναφοράς στο Email';
             }
         });
     }

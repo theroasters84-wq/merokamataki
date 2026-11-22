@@ -8,24 +8,58 @@ export const getHeaders = (includeAuth = true) => {
     return headers;
 };
 
+// Ασφαλής ανάγνωση JSON απαντήσεων ώστε να μην προκαλείται SyntaxError αν ο server/proxy επιστρέψει HTML (π.χ. 413, 502, 504)
+export const safeJson = async (response, fallback = null) => {
+    if (!response) return fallback || { error: 'Κενή απάντηση από τον διακομιστή.' };
+    try {
+        if (typeof response._rawText === 'function') {
+            const text = await response._rawText();
+            if (!text || !text.trim()) {
+                return fallback || (response.ok ? {} : { error: `Σφάλμα διακομιστή (${response.status}).` });
+            }
+            return JSON.parse(text);
+        }
+        const text = await response.text();
+        if (!text || !text.trim()) {
+            return fallback || (response.ok ? {} : { error: `Σφάλμα διακομιστή (${response.status}).` });
+        }
+        return JSON.parse(text);
+    } catch (err) {
+        return fallback || {
+            error: response.status === 413
+                ? 'Το μέγεθος των δεδομένων υπερβαίνει το επιτρεπτό όριο.'
+                : response.status === 429
+                ? 'Πάρα πολλά αιτήματα. Παρακαλώ περιμένετε λίγο και δοκιμάστε ξανά.'
+                : `Μη έγκυρη απάντηση από τον διακομιστή (${response.status || 'Σφάλμα δικτύου'}).`
+        };
+    }
+};
+
+const safeFetch = async (url, options) => {
+    const response = await fetch(url, options);
+    response._rawText = response.text.bind(response);
+    response.json = () => safeJson(response);
+    return response;
+};
+
 export const apiLogin = async (email, password) => {
-    return await fetch('/api/login', {
+    return await safeFetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
     });
 };
 
-export const apiRegister = async (email, password, store_name) => {
-    return await fetch('/api/register', {
+export const apiRegister = async (email, password, store_name, termsAccepted = true) => {
+    return await safeFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, store_name })
+        body: JSON.stringify({ email, password, store_name, termsAccepted })
     });
 };
 
 export const apiForgotPassword = async (email) => {
-    return await fetch('/api/auth/forgot-password', {
+    return await safeFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -33,7 +67,7 @@ export const apiForgotPassword = async (email) => {
 };
 
 export const apiResetPassword = async (token, newPassword) => {
-    return await fetch('/api/auth/reset-password', {
+    return await safeFetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword })
@@ -41,7 +75,7 @@ export const apiResetPassword = async (token, newPassword) => {
 };
 
 export const apiSetPin = async (pin) => {
-    return await fetch('/api/pin/set', {
+    return await safeFetch('/api/pin/set', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ pin })
@@ -49,7 +83,7 @@ export const apiSetPin = async (pin) => {
 };
 
 export const apiVerifyPin = async (pin) => {
-    return await fetch('/api/pin/verify', {
+    return await safeFetch('/api/pin/verify', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ pin })
@@ -57,20 +91,28 @@ export const apiVerifyPin = async (pin) => {
 };
 
 export const apiForgotPin = async () => {
-    return await fetch('/api/pin/forgot', {
+    return await safeFetch('/api/pin/forgot', {
         method: 'POST',
         headers: getHeaders()
     });
 };
 
+export const apiResetPinWithPassword = async (password, newPin) => {
+    return await safeFetch('/api/pin/reset-with-password', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ password, newPin })
+    });
+};
+
 export const apiFetchEmployees = async () => {
-    return await fetch('/api/employees', {
+    return await safeFetch('/api/employees', {
         headers: getHeaders()
     });
 };
 
 export const apiSaveEmployeesBulk = async (employees) => {
-    return await fetch('/api/employees/bulk', {
+    return await safeFetch('/api/employees/bulk', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ employees })
@@ -78,26 +120,26 @@ export const apiSaveEmployeesBulk = async (employees) => {
 };
 
 export const apiFetchDailyRecords = async (month, year) => {
-    return await fetch(`/api/daily-records/${month}/${year}`, {
+    return await safeFetch(`/api/daily-records/${month}/${year}`, {
         headers: getHeaders()
     });
 };
 
 export const apiFetchMonthlyReport = async (month, year) => {
-    return await fetch(`/api/monthly-report/${month}/${year}`, {
+    return await safeFetch(`/api/monthly-report/${month}/${year}`, {
         headers: getHeaders()
     });
 };
 
 export const apiDeleteMonthlyReport = async (month, year) => {
-    return await fetch(`/api/monthly-report/${month}/${year}`, {
+    return await safeFetch(`/api/monthly-report/${month}/${year}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
 };
 
 export const apiSaveMonthlyReport = async (payload) => {
-    return await fetch('/api/monthly-report', {
+    return await safeFetch('/api/monthly-report', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(payload)
@@ -105,7 +147,7 @@ export const apiSaveMonthlyReport = async (payload) => {
 };
 
 export const apiSaveDailyRecord = async (payload) => {
-    return await fetch('/api/daily-records', {
+    return await safeFetch('/api/daily-records', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(payload)
@@ -113,7 +155,7 @@ export const apiSaveDailyRecord = async (payload) => {
 };
 
 export const apiUpdateDailyRecord = async (id, payload) => {
-    return await fetch(`/api/daily-records/${id}`, {
+    return await safeFetch(`/api/daily-records/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(payload)
@@ -121,20 +163,20 @@ export const apiUpdateDailyRecord = async (id, payload) => {
 };
 
 export const apiDeleteDailyRecord = async (id) => {
-    return await fetch(`/api/daily-records/${id}`, {
+    return await safeFetch(`/api/daily-records/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
 };
 
 export const apiGetSettings = async () => {
-    return await fetch('/api/settings', {
+    return await safeFetch('/api/settings', {
         headers: getHeaders()
     });
 };
 
 export const apiSetSettings = async (settings) => {
-    return await fetch('/api/settings', {
+    return await safeFetch('/api/settings', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(settings)

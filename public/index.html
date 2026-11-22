@@ -124,6 +124,20 @@
                     <input type="password" id="registerConfirmPassword" autocomplete="new-password" class="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" placeholder="••••••••">
                     <p id="registerPasswordMismatchMsg" class="hidden text-xs font-medium text-rose-600 mt-1.5">⚠️ Οι κωδικοί πρόσβασης δεν ταιριάζουν.</p>
                 </div>
+
+                <!-- Υποχρεωτική Αποδοχή Όρων Χρήσης & Πολιτικής Απορρήτου (ΜΟΝΟ στην Εγγραφή) -->
+                <div class="pt-1">
+                    <label for="registerAcceptTerms" class="flex items-start gap-2.5 cursor-pointer select-none">
+                        <input type="checkbox" id="registerAcceptTerms" class="mt-0.5 w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary flex-shrink-0">
+                        <span class="text-xs text-slate-600 leading-relaxed">
+                            Έχω διαβάσει και αποδέχομαι τους
+                            <button type="button" data-open-legal="terms" class="text-primary hover:text-blue-700 font-semibold underline underline-offset-2">Όρους Χρήσης</button>
+                            και την
+                            <button type="button" data-open-legal="privacy" class="text-primary hover:text-blue-700 font-semibold underline underline-offset-2">Πολιτική Απορρήτου (GDPR)</button>.
+                        </span>
+                    </label>
+                    <p id="registerTermsErrorMsg" class="hidden text-xs font-medium text-rose-600 mt-1.5">⚠️ Παρακαλώ αποδεχτείτε τους Όρους Χρήσης και την Πολιτική Απορρήτου για να ολοκληρώσετε την εγγραφή σας.</p>
+                </div>
                 
                 <button type="button" id="registerBtn" class="w-full bg-secondary hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.99] mt-4">
                     Δημιουργία Λογαριασμού
@@ -175,6 +189,15 @@
                     <button type="button" id="backToLoginFromResetBtn" class="text-sm text-slate-600 hover:text-primary font-semibold transition-colors">← Επιστροφή στην Είσοδο</button>
                 </div>
             </form>
+
+            <!-- Σύνδεσμοι Όρων Χρήσης & Πολιτικής Απορρήτου (Πληροφοριακή Πρόσβαση) -->
+            <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+                <div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-500 flex-wrap">
+                    <button type="button" data-open-legal="terms" class="hover:text-primary underline underline-offset-2 transition-colors">Όροι Χρήσης</button>
+                    <span class="text-slate-300">•</span>
+                    <button type="button" data-open-legal="privacy" class="hover:text-primary underline underline-offset-2 transition-colors">Πολιτική Απορρήτου (GDPR)</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -684,6 +707,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Υποσέλιδο Εφαρμογής: Όροι Χρήσης & Πολιτική Απορρήτου (GDPR) -->
+        <footer class="mt-10 pt-5 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>© 2026 <span class="font-semibold text-slate-700">Μεροκαματάκι</span> — Εφαρμογή Διαχείρισης Εργασίας, Βαρδιών &amp; Οικονομικών Καταστήματος</p>
+            <div class="flex items-center gap-3 flex-wrap justify-center">
+                <button type="button" data-open-legal="terms" class="hover:text-primary font-medium underline underline-offset-2 transition-colors">Όροι Χρήσης</button>
+                <span class="text-slate-300">•</span>
+                <button type="button" data-open-legal="privacy" class="hover:text-primary font-medium underline underline-offset-2 transition-colors">Πολιτική Απορρήτου (GDPR)</button>
+            </div>
+        </footer>
     </div>
 
     <!-- Day Action Modal (Επιλογή Ενέργειας Ημέρας - Mobile Bottom Sheet) -->
@@ -929,18 +962,59 @@
     <div id="verifyPinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-center justify-center z-[60]">
         <form onsubmit="return false;" class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 max-h-[90vh] max-h-[90dvh] overflow-y-auto border border-slate-200/80">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-slate-900">Κρυφό Ξεκλείδωμα</h3>
+                <h3 id="verifyPinModalTitle" class="text-xl font-bold text-slate-900">Κρυφό Ξεκλείδωμα</h3>
                 <button type="button" id="closeVerifyPinBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors">&times;</button>
             </div>
-            <p class="text-sm text-slate-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
-            <!-- Κρυφό πεδίο username για προσβασιμότητα -->
-            <input type="text" autocomplete="username" value="owner" class="hidden" aria-hidden="true">
-            <input type="password" inputmode="numeric" pattern="[0-9]*" id="verifyPinInput" autocomplete="current-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
-            <button type="button" id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md mb-3">
-                Ξεκλείδωμα
-            </button>
-            <div class="text-center">
-                <button type="button" id="forgotPinBtn" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα το PIN</button>
+
+            <!-- Προβολή 1: Εισαγωγή PIN -->
+            <div id="verifyPinEntryArea">
+                <p class="text-sm text-slate-600 mb-4">Εισάγετε το PIN Ιδιοκτήτη για πλήρη πρόσβαση.</p>
+                <!-- Κρυφό πεδίο username για προσβασιμότητα -->
+                <input type="text" autocomplete="username" value="owner" class="hidden" aria-hidden="true">
+                <input type="password" inputmode="numeric" pattern="[0-9]*" id="verifyPinInput" autocomplete="current-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none mb-4 text-center text-2xl tracking-[0.5em]" placeholder="••••">
+                <button type="button" id="verifyPinBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md mb-3">
+                    Ξεκλείδωμα
+                </button>
+                <div class="text-center">
+                    <button type="button" id="forgotPinBtn" class="text-sm text-primary hover:text-blue-700 font-medium">Ξέχασα το PIN</button>
+                </div>
+            </div>
+
+            <!-- Προβολή 2: Ανάκτηση / Επαναφορά PIN (Κωδικός Λογαριασμού ή Email) -->
+            <div id="recoverPinArea" class="hidden space-y-3.5">
+                <p class="text-xs text-slate-600 leading-relaxed">Επιβεβαιώστε τον <b>Κωδικό Πρόσβασης</b> του λογαριασμού σας<span id="recoverPinEmailBadge" class="font-semibold text-slate-800"></span> για να ορίσετε άμεσα νέο PIN:</p>
+                <div>
+                    <label for="recoverPinAccountPassword" class="block text-xs font-semibold text-slate-700 mb-1">Κωδικός Πρόσβασης Λογαριασμού</label>
+                    <input type="password" id="recoverPinAccountPassword" autocomplete="current-password" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="Ο κωδικός εισόδου σας">
+                </div>
+                <div>
+                    <label for="recoverPinNewPinInput" class="block text-xs font-semibold text-slate-700 mb-1">Νέο PIN Ιδιοκτήτη</label>
+                    <input type="password" inputmode="numeric" pattern="[0-9]*" id="recoverPinNewPinInput" autocomplete="new-password" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-center text-xl tracking-[0.5em]" placeholder="••••">
+                </div>
+                <div>
+                    <label for="recoverPinConfirmPinInput" class="block text-xs font-semibold text-slate-700 mb-1">Επιβεβαίωση Νέου PIN</label>
+                    <input type="password" inputmode="numeric" pattern="[0-9]*" id="recoverPinConfirmPinInput" autocomplete="new-password" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-center text-xl tracking-[0.5em]" placeholder="••••">
+                </div>
+
+                <div id="recoverPinFeedback" class="hidden p-3 rounded-xl text-xs font-medium border"></div>
+
+                <button type="button" id="resetPinWithPasswordBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors shadow-md text-sm">
+                    Αποθήκευση Νέου PIN &amp; Ξεκλείδωμα
+                </button>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-2 text-[11px] text-slate-400 uppercase font-semibold">Ή</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button type="button" id="sendPinResetEmailBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-colors text-xs border border-slate-200/80">
+                    📩 Αποστολή Συνδέσμου Επαναφοράς στο Email
+                </button>
+
+                <div class="text-center pt-1">
+                    <button type="button" id="backToVerifyPinBtn" class="text-xs text-slate-500 hover:text-primary font-semibold transition-colors">← Επιστροφή στην εισαγωγή PIN</button>
+                </div>
             </div>
         </form>
     </div>
@@ -984,6 +1058,158 @@
             </div>
             <div class="mt-6 pt-4 border-t border-slate-100 text-right">
                 <button id="closeHelpModalBtnBottom" class="bg-primary hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl transition duration-200 shadow-sm text-sm">Κατάλαβα</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legal Modal: Όροι Χρήσης & Πολιτική Απορρήτου (GDPR) -->
+    <div id="legalModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity hidden flex items-end sm:items-center justify-center p-0 sm:p-4 z-[85]" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle">
+        <div class="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-2xl max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl border border-slate-200/80">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-2.5 mb-1 sm:hidden flex-shrink-0"></div>
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center px-5 sm:px-6 pt-3.5 pb-3 border-b border-slate-100 flex-shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center text-base font-bold">⚖️</span>
+                    <div>
+                        <h3 id="legalModalTitle" class="text-base sm:text-xl font-bold text-slate-900">Όροι Χρήσης &amp; Πολιτική Απορρήτου (GDPR)</h3>
+                        <p class="text-[11px] sm:text-xs text-slate-500">Μεροκαματάκι — Διαφάνεια &amp; Προστασία Δεδομένων</p>
+                    </div>
+                </div>
+                <button type="button" id="closeLegalModalBtn" class="text-slate-400 hover:text-rose-500 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-2xl leading-none transition-colors" aria-label="Κλείσιμο">&times;</button>
+            </div>
+
+            <!-- Εναλλαγή Ενοτήτων (Tabs) -->
+            <div class="px-5 sm:px-6 pt-3 pb-2 bg-slate-50/70 border-b border-slate-100 flex-shrink-0">
+                <div class="bg-slate-200/70 p-1 rounded-xl inline-flex w-full sm:w-auto gap-1">
+                    <button type="button" id="legalTabTermsBtn" class="flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm">
+                        📜 Όροι Χρήσης
+                    </button>
+                    <button type="button" id="legalTabPrivacyBtn" class="flex-1 sm:flex-initial py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+                        🛡️ Πολιτική Απορρήτου (GDPR)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Content Body -->
+            <div class="overflow-y-auto flex-1 px-5 sm:px-6 py-5 text-slate-700 text-xs sm:text-sm leading-relaxed space-y-5">
+                <!-- Ενότητα 1: Όροι Χρήσης -->
+                <div id="legalTermsPanel" class="space-y-4">
+                    <div class="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 text-xs text-blue-900">
+                        <b>Τελευταία Ενημέρωση:</b> Νοέμβριος 2026 • Η χρήση της διαδικτυακής εφαρμογής <b>«Μεροκαματάκι»</b> συνεπάγεται την πλήρη και ανεπιφύλακτη αποδοχή των παρόντων Όρων Χρήσης.
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">1. Σκοπός της Εφαρμογής</h4>
+                        <p>Το <b>«Μεροκαματάκι»</b> είναι ένα πληροφοριακό εργαλείο οργάνωσης και εσωτερικής παρακολούθησης βαρδιών εργασίας, μεροκάματων, ημερήσιων ταμείων (έσοδα POS/μετρητά), εξόδων και εκτιμήσεων κόστους λειτουργίας (π.χ. Food Cost, πάγια) για καταστήματα και μικρομεσαίες επιχειρήσεις.</p>
+                        <p class="mt-1.5">Η εφαρμογή λειτουργεί αποκλειστικά ως <b>βοηθητικό εργαλείο εσωτερικής διοίκησης</b> και δεν υποκαθιστά επίσημα λογιστικά, φορολογικά ή μισθοδοτικά συστήματα (π.χ. ΕΡΓΑΝΗ, myDATA, ταμειακές μηχανές ΦΗΜ), ούτε αποτελεί παροχή λογιστικών ή νομικών συμβουλών.</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">2. Λογαριασμός Χρήστη &amp; Ασφάλεια Πρόσβασης</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Ο χρήστης (ιδιοκτήτης ή εξουσιοδοτημένος διαχειριστής καταστήματος) εγγράφεται με έγκυρη διεύθυνση email και προσωπικό κωδικό πρόσβασης.</li>
+                            <li>Ο χρήστης είναι αποκλειστικά υπεύθυνος για τη διαφύλαξη της εμπιστευτικότητας του κωδικού πρόσβασης και του <b>PIN Ιδιοκτήτη</b>, καθώς και για κάθε ενέργεια που πραγματοποιείται μέσω του λογαριασμού του.</li>
+                            <li>Σε περίπτωση μη εξουσιοδοτημένης χρήσης ή απώλειας κωδικού, ο χρήστης οφείλει να προχωρήσει άμεσα σε επαναφορά κωδικού μέσω της λειτουργίας «Ξέχασες τον κωδικό σου;».</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">3. Ευθύνη Χρήστη για τα Καταχωρημένα Δεδομένα</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Ο χρήστης φέρει την αποκλειστική ευθύνη για την ακρίβεια, τη νομιμότητα και την πληρότητα των στοιχείων που καταχωρεί (ποσά τζίρου, έξοδα, ονόματα/μικρά ονόματα εργαζομένων, ωράρια και ωρομίσθια).</li>
+                            <li>Όταν ο χρήστης καταχωρεί στοιχεία προσωπικού του καταστήματός του, ενεργεί ως <b>Υπεύθυνος Επεξεργασίας (Data Controller)</b> έναντι των εργαζομένων του και οφείλει να τους έχει ενημερώσει σχετικά, σύμφωνα με την εργατική νομοθεσία και τον Κανονισμό (ΕΕ) 2016/679 (GDPR).</li>
+                            <li>Συνιστάται η καταχώρηση μόνο των απολύτως απαραίτητων στοιχείων αναγνώρισης βάρδιας (π.χ. μικρό όνομα ή αρχικά) και η αποφυγή εισαγωγής ευαίσθητων δεδομένων (ΑΦΜ, ΑΜΚΑ, IBAN, δεδομένα υγείας κ.λπ.).</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">4. Διαθεσιμότητα Υπηρεσίας &amp; Περιορισμός Ευθύνης</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Η εφαρμογή παρέχεται «ως έχει» (<i>as is</i>). Καταβάλλεται κάθε εύλογη προσπάθεια για την αδιάλειπτη και ασφαλή λειτουργία της, ωστόσο δεν παρέχεται εγγύηση απουσίας προσωρινών διακοπών λόγω συντήρησης, αναβαθμίσεων ή τεχνικών ζητημάτων τρίτων παρόχων cloud.</li>
+                            <li>Οι αυτόματοι υπολογισμοί της εφαρμογής (π.χ. εκτιμήσεις ΦΠΑ, ΙΚΑ/ΕΦΚΑ, Food Cost, πρόβλεψη τέλους μήνα) έχουν <b>ενδεικτικό και πληροφοριακό χαρακτήρα</b> βάσει των παραμέτρων που ορίζει ο χρήστης. Ο διαχειριστής της εφαρμογής δεν ευθύνεται για επιχειρηματικές, φορολογικές ή οικονομικές αποφάσεις που λαμβάνονται αποκλειστικά βάσει αυτών των εκτιμήσεων.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">5. Τροποποιήσεις Όρων &amp; Εφαρμοστέο Δίκαιο</h4>
+                        <p>Οι παρόντες Όροι Χρήσης διέπονται από το Ελληνικό και το Ενωσιακό Δίκαιο. Η διαχείριση της εφαρμογής διατηρεί το δικαίωμα επικαιροποίησης των όρων για λόγους κανονιστικής συμμόρφωσης ή προσθήκης νέων λειτουργιών, με σχετική επισήμανση εντός της εφαρμογής.</p>
+                    </div>
+                </div>
+
+                <!-- Ενότητα 2: Πολιτική Απορρήτου & GDPR -->
+                <div id="legalPrivacyPanel" class="space-y-4 hidden">
+                    <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 text-xs text-emerald-900">
+                        <b>Συμμόρφωση με τον Γενικό Κανονισμό Προστασίας Δεδομένων (ΕΕ) 2016/679 (GDPR) &amp; τον Ν. 4624/2019:</b> Η προστασία του απορρήτου και η ασφάλεια των δεδομένων σας αποτελούν βασική αρχή σχεδιασμού του «Μεροκαματάκι».
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">1. Στοιχεία Υπευθύνου / Διαχειριστή της Εφαρμογής</h4>
+                        <p>Για τα δεδομένα λογαριασμού των εγγεγραμμένων χρηστών της πλατφόρμας, Υπεύθυνος Επεξεργασίας είναι ο φορέας/διαχειριστής της εφαρμογής «Μεροκαματάκι».</p>
+                        <div class="mt-2 bg-amber-50/80 border border-amber-200/90 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+                            <p class="font-bold">📌 Στοιχεία Διαχειριστή &amp; Επικοινωνίας GDPR (Προς συμπλήρωση από τον Διαχειριστή):</p>
+                            <p>• <b>Επωνυμία / Ονοματεπώνυμο Διαχειριστή:</b> <span class="font-mono bg-white/80 px-1.5 py-0.5 rounded border border-amber-200">[Συμπληρώστε Επωνυμία ή Ονοματεπώνυμο]</span></p>
+                            <p>• <b>Έδρα / Διεύθυνση:</b> <span class="font-mono bg-white/80 px-1.5 py-0.5 rounded border border-amber-200">[Συμπληρώστε Ταχυδρομική Διεύθυνση]</span></p>
+                            <p>• <b>Email Επικοινωνίας για θέματα Απορρήτου (GDPR):</b> <span class="font-mono bg-white/80 px-1.5 py-0.5 rounded border border-amber-200">[π.χ. privacy@your-domain.gr]</span></p>
+                        </div>
+                        <p class="mt-1.5 text-xs text-slate-500"><i>Σημείωση Ρόλων GDPR:</i> Για τα εσωτερικά δεδομένα βαρδιών/εργαζομένων που καταχωρεί το εκάστοτε κατάστημα, Υπεύθυνος Επεξεργασίας (Controller) είναι η ίδια η επιχείρηση/χρήστης και η εφαρμογή λειτουργεί ως Εκτελών την Επεξεργασία (Processor).</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">2. Ποια Δεδομένα Συλλέγονται &amp; Πώς Αποθηκεύονται</h4>
+                        <ul class="list-disc pl-5 space-y-1.5">
+                            <li><b>Δεδομένα Λογαριασμού &amp; Ταυτοποίησης:</b> Διεύθυνση email, όνομα καταστήματος (προαιρετικό), κρυπτογραφημένος κωδικός πρόσβασης (μέσω <code>bcrypt</code> hash) και κρυπτογραφημένο PIN Ιδιοκτήτη (<code>bcrypt</code> hash). Οι κωδικοί <b>δεν</b> αποθηκεύονται ποτέ σε απλό κείμενο (plain text).</li>
+                            <li><b>Δεδομένα Επαναφοράς Κωδικού (Reset Tokens):</b> Σε περίπτωση αιτήματος ανάκτησης κωδικού, δημιουργείται προσωρινό κρυπτογραφικό token διάρκειας 30 λεπτών, το οποίο αποθηκεύεται στη βάση δεδομένων αποκλειστικά ως μονόδρομο <b>SHA-256 hash</b> και ακυρώνεται αμέσως μετά τη χρήση του.</li>
+                            <li><b>Δεδομένα Λειτουργίας Καταστήματος:</b> Ονόματα/αναγνωριστικά προσωπικού, ωρομίσθια, πρόγραμμα βαρδιών, ημερήσια έσοδα (POS/Μετρητά/Ζ), όνομα βάρδιας/ταμία, ημερήσια έξοδα και μηνιαίες οικονομικές συνόψεις. Κάθε κατάστημα είναι απομονωμένο μέσω μοναδικού <code>store_id</code> (Multi-Tenancy).</li>
+                            <li><b>Τοπική Αποθήκευση Συσκευής (LocalStorage &amp; PWA Cache):</b> Η εφαρμογή δεν χρησιμοποιεί cookies διαφημιστικής παρακολούθησης (tracking/advertising cookies). Χρησιμοποιεί μόνο το <code>localStorage</code> του φυλλομετρητή σας για την αποθήκευση του JSON Web Token (JWT) συνεδρίας και της κατάστασης κλειδώματος PIN.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">3. Σκοπός &amp; Νομική Βάση Επεξεργασίας (Άρθρο 6 GDPR)</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><b>Εκτέλεση Σύμβασης / Παροχή Υπηρεσίας (Άρθρο 6 παρ. 1β GDPR):</b> Ταυτοποίηση χρήστη, αποθήκευση και εμφάνιση του ημερολογίου βαρδιών, υπολογισμός ταμείων/εξόδων και αποστολή λειτουργικών emails (π.χ. επαναφορά κωδικού ή PIN).</li>
+                            <li><b>Έννομο Συμφέρον &amp; Ασφάλεια Πληροφοριακών Συστημάτων (Άρθρο 6 παρ. 1στ GDPR):</b> Προστασία των λογαριασμών από μη εξουσιοδοτημένη πρόσβαση, αποτροπή κατάχρησης και τεχνική καταγραφή σφαλμάτων λειτουργίας.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">4. Αποδέκτες &amp; Τρίτοι Πάροχοι Υποδομής (Sub-processors)</h4>
+                        <p>Τα δεδομένα σας <b>δεν πωλούνται, δεν ενοικιάζονται και δεν κοινοποιούνται</b> για εμπορικούς ή διαφημιστικούς σκοπούς. Για την τεχνική λειτουργία της εφαρμογής χρησιμοποιούνται αξιόπιστοι πάροχοι υποδομής:</p>
+                        <ul class="list-disc pl-5 space-y-1 mt-1">
+                            <li><b>Υποδομή Φιλοξενίας (Cloud Hosting &amp; PostgreSQL Database):</b> Πάροχοι cloud hosting (όπως Render / διαχειριζόμενη βάση PostgreSQL με κρυπτογραφημένη σύνδεση SSL/TLS) για την ασφαλή εκτέλεση του server και την αποθήκευση της βάσης δεδομένων.</li>
+                            <li><b>Υπηρεσίες Αποστολής Λειτουργικών Email (Transactional Email Providers):</b> Πάροχοι αποστολής email μέσω HTTPS API / SMTP (όπως Brevo, Resend ή SMTP) αποκλειστικά για την αποστολή συνδέσμων ανάκτησης κωδικού πρόσβασης ή PIN όταν το ζητήσει ο ίδιος ο χρήστης.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">5. Χρόνος Διατήρησης Δεδομένων</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Τα δεδομένα λογαριασμού και καταχωρήσεων διατηρούνται για όσο διάστημα ο λογαριασμός του χρήστη παραμένει ενεργός.</li>
+                            <li>Ο χρήστης έχει τη δυνατότητα ανά πάσα στιγμή μέσα από την εφαρμογή να διαγράψει μεμονωμένες ημερήσιες εγγραφές, εργαζομένους ή να επιλέξει «Διαγραφή αναλυτικών ημερήσιων δεδομένων» κατά το οριστικό κλείσιμο κάθε μήνα.</li>
+                            <li>Τα tokens επαναφοράς κωδικού λήγουν αυτόματα μετά από <b>30 λεπτά</b>.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1">6. Τα Δικαιώματά σας βάσει του GDPR (Άρθρα 15–22)</h4>
+                        <p>Ως υποκείμενο των δεδομένων διατηρείτε ανά πάσα στιγμή τα εξής δικαιώματα:</p>
+                        <ul class="list-disc pl-5 space-y-1 mt-1">
+                            <li><b>Δικαίωμα Πρόσβασης &amp; Ενημέρωσης:</b> Να γνωρίζετε ποια δεδομένα σας τηρούνται στην εφαρμογή.</li>
+                            <li><b>Δικαίωμα Διόρθωσης:</b> Να επεξεργάζεστε και να διορθώνετε άμεσα τυχόν ανακριβή στοιχεία (βάρδιες, ταμεία, ρυθμίσεις, κωδικό πρόσβασης).</li>
+                            <li><b>Δικαίωμα Διαγραφής («Δικαίωμα στη Λήθη»):</b> Να διαγράφετε καταχωρήσεις εντός της εφαρμογής ή να ζητήσετε την οριστική διαγραφή του λογαριασμού σας και όλων των συνδεδεμένων δεδομένων του καταστήματός σας.</li>
+                            <li><b>Δικαίωμα Περιορισμού Επεξεργασίας &amp; Φορητότητας:</b> Να ζητήσετε περιορισμό της επεξεργασίας ή εξαγωγή των δεδομένων σας σε δομημένη μορφή.</li>
+                            <li><b>Δικαίωμα Καταγγελίας:</b> Εάν θεωρείτε ότι θίγεται η προστασία των προσωπικών σας δεδομένων, έχετε δικαίωμα προσφυγής στην <b>Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (ΑΠΔΠΧ)</b> (www.dpa.gr).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-100 px-5 sm:px-6 py-3.5 flex items-center justify-between gap-3 flex-shrink-0">
+                <span class="text-[11px] text-slate-400">Μεροκαματάκι • Όροι Χρήσης &amp; GDPR</span>
+                <button type="button" id="closeLegalModalBottomBtn" class="bg-primary hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl transition duration-200 shadow-sm text-xs sm:text-sm">
+                    Κλείσιμο
+                </button>
             </div>
         </div>
     </div>

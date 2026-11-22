@@ -4,7 +4,14 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') 
     ? false 
-    : { rejectUnauthorized: false } // Τοπικά κλειστό, στο Render (ή άλλους server) ανοιχτό
+    : { rejectUnauthorized: false }, // Τοπικά κλειστό, στο Render (ή άλλους server) ανοιχτό
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client:', err.message);
 });
 
 const initDB = async () => {
@@ -73,6 +80,7 @@ const initDB = async () => {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS fixed_overheads DECIMAL(10, 2) DEFAULT 0;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_insurance DECIMAL(10, 2) DEFAULT 0;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vat_rate DECIMAL(5, 2) DEFAULT 13;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMP DEFAULT NULL;`);
     
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS worked_employees JSONB DEFAULT '[]'::jsonb;`);
     await pool.query(`ALTER TABLE dashboard_daily_records ADD COLUMN IF NOT EXISTS detailed_expenses JSONB DEFAULT '[]'::jsonb;`);
@@ -118,6 +126,16 @@ const initDB = async () => {
       );
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_tokens(token_hash);`);
+
+    // Ατομικό Sequence για μοναδικό store_id ανά νέο κατάστημα (εξάλειψη race condition στο /api/register)
+    await pool.query(`CREATE SEQUENCE IF NOT EXISTS users_store_id_seq START WITH 1;`);
+    await pool.query(`
+      SELECT setval(
+        'users_store_id_seq',
+        COALESCE((SELECT MAX(store_id) FROM users), 1),
+        (SELECT MAX(store_id) IS NOT NULL FROM users)
+      );
+    `);
 
     console.log('Database tables initialized successfully');
   } catch (error) {
