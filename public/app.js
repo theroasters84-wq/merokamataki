@@ -8,7 +8,7 @@ import {
   refreshChartData, renderCalendar, openDayModal, closeDayModal, updateModalDrawerStatus, updateEditModalBreakdown, updateModalExpensesUI, updateEditExpensesUI, updateDashExpensesUI, updateCalculations, renderMonthlyTable, reportNetRevenueDisplay, reportNetProfitAfterIka, reportVatBreakdownDisplay, dailyNetRevenueDisplayEl, dailyBurnRateDisplayEl, reportForecastProfit, reportVatProvision, reportIkaProvision, renderMonthlyChart, fixedOverheadsInput, ownerInsuranceInput, vatRateInput, saveSettingsBtn, quickImportMonth, quickImportYear, quickImportRev, quickImportExp, quickImportWages, quickImportBtn, reopenMonthBtn, closeMonthOptions, closeMonthDesc
   , reportAverageDailyRevenue, getRecordDateStr, jumpToTodayBtn, quickAddExpenseBtn, quickCloseShiftBtn
 } from './dom.js';
-document.addEventListener('DOMContentLoaded', () => {
+const initApp = () => {
 
     // --- Αρχικοποίηση Πεδίων Ρυθμίσεων ---
     if (saveSettingsBtn) {
@@ -1496,4 +1496,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initEmployees(updateCalculations, renderCalendar);
     // Εκκίνηση Εφαρμογής - Έλεγχος Auth αντί για άμεσο φόρτωμα
     checkAuth();
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

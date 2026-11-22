@@ -247,20 +247,26 @@ export function initAuth({ onAuthSuccess }) {
         });
     }
 
+    let isForgotPasswordSubmitting = false;
+
     const handleForgotPasswordSubmit = async (e) => {
         if (e) e.preventDefault();
+        if (isForgotPasswordSubmitting) return;
+
         const email = forgotPasswordEmail ? forgotPasswordEmail.value.trim() : '';
         if (!email) {
             if (forgotPasswordEmail) forgotPasswordEmail.focus();
             return showToast('Παρακαλώ εισάγετε το email του λογαριασμού σας.', 'warning');
         }
 
+        isForgotPasswordSubmitting = true;
         try {
             if (forgotPasswordSubmitBtn) {
                 forgotPasswordSubmitBtn.disabled = true;
                 forgotPasswordSubmitBtn.textContent = 'Αποστολή...';
             }
 
+            console.log('[ForgotPassword UI] Submitting...');
             const res = await apiForgotPassword(email);
             const data = await res.json();
 
@@ -284,6 +290,7 @@ export function initAuth({ onAuthSuccess }) {
             console.error(err);
             showToast('Αδυναμία σύνδεσης με τον server.', 'error');
         } finally {
+            isForgotPasswordSubmitting = false;
             if (forgotPasswordSubmitBtn) {
                 forgotPasswordSubmitBtn.disabled = false;
                 forgotPasswordSubmitBtn.textContent = 'Αποστολή Συνδέσμου Ανάκτησης';
@@ -297,6 +304,15 @@ export function initAuth({ onAuthSuccess }) {
 
     if (forgotPasswordFormArea) {
         forgotPasswordFormArea.addEventListener('submit', handleForgotPasswordSubmit);
+    }
+
+    if (forgotPasswordEmail) {
+        forgotPasswordEmail.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleForgotPasswordSubmit(e);
+            }
+        });
     }
 
     const setResetPasswordMismatchError = (hasMismatch) => {
