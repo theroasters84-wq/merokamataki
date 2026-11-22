@@ -247,46 +247,56 @@ export function initAuth({ onAuthSuccess }) {
         });
     }
 
-    if (forgotPasswordSubmitBtn) {
-        forgotPasswordSubmitBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const email = forgotPasswordEmail ? forgotPasswordEmail.value.trim() : '';
-            if (!email) {
-                if (forgotPasswordEmail) forgotPasswordEmail.focus();
-                return showToast('Παρακαλώ εισάγετε το email του λογαριασμού σας.', 'warning');
-            }
+    const handleForgotPasswordSubmit = async (e) => {
+        if (e) e.preventDefault();
+        const email = forgotPasswordEmail ? forgotPasswordEmail.value.trim() : '';
+        if (!email) {
+            if (forgotPasswordEmail) forgotPasswordEmail.focus();
+            return showToast('Παρακαλώ εισάγετε το email του λογαριασμού σας.', 'warning');
+        }
 
-            try {
+        try {
+            if (forgotPasswordSubmitBtn) {
                 forgotPasswordSubmitBtn.disabled = true;
                 forgotPasswordSubmitBtn.textContent = 'Αποστολή...';
+            }
 
-                const res = await apiForgotPassword(email);
-                const data = await res.json();
+            const res = await apiForgotPassword(email);
+            const data = await res.json();
 
-                if (forgotPasswordFeedback) {
-                    forgotPasswordFeedback.classList.remove('hidden');
-                    if (res.ok) {
-                        forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-emerald-50 text-emerald-800 border-emerald-200';
-                        forgotPasswordFeedback.textContent = data.message || 'Εάν το email είναι καταχωρημένο, σας στείλαμε σύνδεσμο επαναφοράς.';
-                    } else {
-                        forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-rose-50 text-rose-800 border-rose-200';
-                        forgotPasswordFeedback.textContent = data.error || 'Σφάλμα κατά την αποστολή email.';
-                    }
-                }
-
+            if (forgotPasswordFeedback) {
+                forgotPasswordFeedback.classList.remove('hidden');
                 if (res.ok) {
-                    showToast('Ελέγξτε τα εισερχόμενα του email σας για τον σύνδεσμο επαναφοράς.', 'success');
+                    forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-emerald-50 text-emerald-800 border-emerald-200';
+                    forgotPasswordFeedback.textContent = data.message || 'Εάν το email είναι καταχωρημένο, σας στείλαμε σύνδεσμο επαναφοράς.';
                 } else {
-                    showToast(data.error || 'Σφάλμα κατά την αποστολή email.', 'error');
+                    forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-rose-50 text-rose-800 border-rose-200';
+                    forgotPasswordFeedback.textContent = data.error || 'Σφάλμα κατά την αποστολή email.';
                 }
-            } catch (err) {
-                console.error(err);
-                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
-            } finally {
+            }
+
+            if (res.ok) {
+                showToast('Ελέγξτε τα εισερχόμενα του email σας για τον σύνδεσμο επαναφοράς.', 'success');
+            } else {
+                showToast(data.error || 'Σφάλμα κατά την αποστολή email.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+        } finally {
+            if (forgotPasswordSubmitBtn) {
                 forgotPasswordSubmitBtn.disabled = false;
                 forgotPasswordSubmitBtn.textContent = 'Αποστολή Συνδέσμου Ανάκτησης';
             }
-        });
+        }
+    };
+
+    if (forgotPasswordSubmitBtn) {
+        forgotPasswordSubmitBtn.addEventListener('click', handleForgotPasswordSubmit);
+    }
+
+    if (forgotPasswordFormArea) {
+        forgotPasswordFormArea.addEventListener('submit', handleForgotPasswordSubmit);
     }
 
     const setResetPasswordMismatchError = (hasMismatch) => {
