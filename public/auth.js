@@ -268,7 +268,7 @@ export function initAuth({ onAuthSuccess }) {
 
             console.log('[ForgotPassword UI] Submitting...');
             const res = await apiForgotPassword(email);
-            console.log('[ForgotPassword UI] Response status:', res.status, res.url);
+            console.log('[ForgotPassword UI] Response:', res.status, res.url);
             const data = await res.json();
 
             if (forgotPasswordFeedback) {

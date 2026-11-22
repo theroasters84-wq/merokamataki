@@ -154,8 +154,10 @@ const createMailTransporter = () => {
 
 const handleForgotPassword = async (req, res) => {
   try {
+    console.log('[Forgot Password] Request received on:', req.method, req.originalUrl);
     const rawEmail = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : '';
     if (!rawEmail) {
+      console.log('[Forgot Password] Validation failed: empty email in request body');
       return res.status(400).json({ error: 'Παρακαλώ εισάγετε το email σας.' });
     }
 
