@@ -176,13 +176,50 @@
 
         <!-- Dashboard View -->
         <div id="dashboardView">
+            <!-- Γρήγορη Μπάρα Ημέρας: Ποιος Δουλεύει & Άμεσες Ενέργειες (Mobile/Tablet First) -->
+            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-4 sm:p-5 mb-4 sm:mb-6">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="space-y-1.5 min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary bg-blue-50 border border-blue-200/80 px-2.5 py-1 rounded-full" id="selectedDayBadge">📅 Επιλεγμένη Ημέρα</span>
+                            <h2 id="selectedDayTitleDisplay" class="text-base sm:text-lg font-bold text-slate-900">Σήμερα</h2>
+                            <button type="button" id="jumpToTodayBtn" class="hidden text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50/80 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200/60 transition-colors">↩ Επιστροφή στο Σήμερα</button>
+                        </div>
+                        <!-- Ποιος Δουλεύει Σήμερα (Βάρδιες Πρωί / Βράδυ / Σπαστό) -->
+                        <div class="flex items-center gap-1.5 flex-wrap pt-0.5" id="selectedDayShiftsPills">
+                            <span class="text-xs text-slate-400 italic">Φόρτωση βαρδιών ημέρας...</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                        <button type="button" id="quickAddExpenseBtn" class="flex-1 sm:flex-initial min-h-[44px] bg-amber-50 hover:bg-amber-100/90 active:scale-[0.99] text-amber-900 border border-amber-300/80 font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-2">
+                            <span class="text-base">💸</span>
+                            <span>+ Έξοδο / Τιμολόγιο</span>
+                        </button>
+                        <button type="button" id="quickCloseShiftBtn" class="flex-1 sm:flex-initial min-h-[44px] bg-primary hover:bg-blue-700 active:scale-[0.99] text-white font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2">
+                            <span class="text-base">📊</span>
+                            <span id="quickCloseShiftBtnLabel">Κλείσιμο Βάρδιας</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Ημερολόγιο -->
             <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-3 sm:p-6 mb-6 sm:mb-8">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+                    <div class="flex items-center gap-2 flex-wrap text-[11px] sm:text-xs text-slate-500">
+                        <span class="font-semibold text-slate-700">Υπόμνημα Βαρδιών:</span>
+                        <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md font-medium">☀️ Πρωί</span>
+                        <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 border border-indigo-200/80 px-2 py-0.5 rounded-md font-medium">🌙 Βράδυ</span>
+                        <span class="inline-flex items-center gap-1 bg-purple-50 text-purple-800 border border-purple-200/80 px-2 py-0.5 rounded-md font-medium">⚡ Σπαστό</span>
+                        <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-md font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Κλεισμένο Ταμείο</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Πατήστε σε οποιαδήποτε ημέρα για ταμείο ή έξοδα</span>
+                </div>
                 <div class="overflow-x-auto custom-scrollbar">
-                    <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-0 md:min-w-[700px]">
+                    <div class="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 text-center text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[680px] md:min-w-[700px]">
                         <div>Δευ</div><div>Τρι</div><div>Τετ</div><div>Πεμ</div><div>Παρ</div><div>Σαβ</div><div>Κυρ</div>
                     </div>
-                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-2 auto-rows-[minmax(85px,auto)] sm:auto-rows-[minmax(100px,auto)] min-w-0 md:min-w-[700px]">
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 sm:gap-2 auto-rows-[minmax(90px,auto)] sm:auto-rows-[minmax(100px,auto)] min-w-[680px] md:min-w-[700px]">
                         <!-- Το Grid 7x5 (ή 7x6) θα δημιουργηθεί δυναμικά μέσω JS -->
                     </div>
                 </div>
@@ -281,61 +318,119 @@
                 </div>
 
                 <!-- Κάρτα 3: Συνολική Εικόνα Εβδομάδας -->
-                <div class="admin-only hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-lg p-5 sm:p-6 border border-slate-700/80 text-white flex flex-col">
-                    <h2 class="text-lg sm:text-xl font-bold mb-4 border-b border-slate-700/80 pb-3">Εικόνα Εβδομάδας</h2>
-                    
-                    <div class="flex-grow flex flex-col justify-center space-y-6">
-                        <div>
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Συνολικό Κόστος Λειτουργίας</p>
-                            <p class="text-3xl font-bold text-white tracking-tight tabular-nums" id="totalWeeklyCost">0.00 <span class="text-xl font-normal text-slate-400">€</span></p>
-                            <p class="text-xs text-slate-400 mt-1">Προσωπικό + Πάγια + Μ.Ο. Πρώτων Υλών</p>
-                        </div>
-
-                        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700">
-                            <p class="text-xs uppercase tracking-wider text-slate-300 font-semibold mb-1">Νεκρό Σημείο (Break-even)</p>
-                            <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-emerald-400 tabular-nums" id="breakEvenPoint">0.00 <span class="text-lg font-normal text-emerald-500/70">€</span></p>
+                <div class="admin-only hidden bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-lg p-5 sm:p-6 border border-slate-700/80 text-white flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-4 border-b border-slate-700/80 pb-3">
+                            <div>
+                                <h2 class="text-lg sm:text-xl font-bold">Εικόνα Εβδομάδας</h2>
+                                <p class="text-xs text-slate-400 mt-0.5">Εβδομαδιαία ανάλυση κόστους & νεκρού σημείου</p>
                             </div>
-                            <p class="text-xs text-slate-400 mt-1">Απαιτούμενος τζίρος για μηδενικό κέρδος/ζημιά</p>
+                            <div class="text-right bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700">
+                                <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Food Cost Μήνα</p>
+                                <p id="weeklyCardFoodCostDisplay" class="text-base font-bold text-slate-300 tabular-nums">-%</p>
+                            </div>
                         </div>
+                        
+                        <div class="space-y-5">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Συνολικό Κόστος Λειτουργίας (7 Ημέρες)</p>
+                                <p class="text-3xl font-bold text-white tracking-tight tabular-nums" id="totalWeeklyCost">0.00 <span class="text-xl font-normal text-slate-400">€</span></p>
+                                <p class="text-xs text-slate-400 mt-1" id="weeklyCostBreakdownText">Προσωπικό + Πάγια + Εκτίμηση Πρώτων Υλών</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2.5 text-xs">
+                                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/80">
+                                    <p class="text-[11px] text-slate-400 font-medium">Μισθοδοσία Εβδομάδας</p>
+                                    <p class="text-base font-bold text-white tabular-nums mt-0.5" id="weeklyPayrollCostDisplay">0,00 €</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5" id="weeklyPayrollWithIkaDisplay">+ ΙΚΑ: 0,00 €</p>
+                                </div>
+                                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/80">
+                                    <p class="text-[11px] text-slate-400 font-medium">Αναλογούντα Πάγια (7ημ)</p>
+                                    <p class="text-base font-bold text-white tabular-nums mt-0.5" id="weeklyFixedCostDisplay">0,00 €</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Ενοίκιο, ΔΕΚΟ, ΕΦΚΑ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 mt-5">
+                        <p class="text-xs uppercase tracking-wider text-slate-300 font-semibold mb-1">Νεκρό Σημείο Εβδομάδας (Break-even)</p>
+                        <div class="flex items-end gap-2">
+                            <p class="text-2xl font-bold text-emerald-400 tabular-nums" id="breakEvenPoint">0.00 <span class="text-lg font-normal text-emerald-500/70">€</span></p>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Απαιτούμενος καθαρός τζίρος εβδομάδας για μηδενική ζημιά</p>
                     </div>
                 </div>
 
-                <!-- Κάρτα 4: Εικόνα Ημέρας -->
-                <div class="admin-only hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6 flex flex-col">
-                    <h2 class="text-lg sm:text-xl font-bold mb-4 text-slate-900 border-b border-slate-100 pb-3">Εικόνα Ημέρας</h2>
-                    
-                    <div class="flex-grow flex flex-col justify-center space-y-5">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                                <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Καθαρός Τζίρος (άνευ ΦΠΑ)</p>
-                                <p class="text-lg font-bold text-slate-900 tabular-nums" id="dailyNetRevenueDisplay">0.00 €</p>
+                <!-- Κάρτα 4: Βραδινός Απολογισμός & Πραγματική Εικόνα Ημέρας («Τι Μένει») -->
+                <div class="admin-only hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 sm:p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-3">
+                            <div>
+                                <h2 class="text-lg sm:text-xl font-bold text-slate-900">Εικόνα Ημέρας — «Τι Μένει»</h2>
+                                <p class="text-xs text-slate-500 mt-0.5" id="dailyCardSubtitle">Πραγματικός απολογισμός επιλεγμένης ημέρας</p>
                             </div>
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                                <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Αναλογούντα Πάγια (Ημέρας)</p>
-                                <p class="text-lg font-bold text-slate-900 tabular-nums" id="dailyBurnRateDisplay">0.00 €</p>
+                            <span id="dailyCardStatusBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Επιλεγμένη Ημέρα</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- Τζίρος (Μικτός vs Καθαρός) & Πάγια -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
+                                    <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Καθαρός Τζίρος (άνευ ΦΠΑ)</p>
+                                    <p class="text-lg font-bold text-slate-900 tabular-nums" id="dailyNetRevenueDisplay">0,00 €</p>
+                                    <p class="text-[11px] text-slate-500 mt-1 tabular-nums" id="dailyGrossAndVatDisplay">Μικτός: 0,00 € (ΦΠΑ: 0,00 €)</p>
+                                </div>
+                                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
+                                    <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Ταμείο & Πάγια Ημέρας</p>
+                                    <p class="text-xs font-semibold text-slate-700 tabular-nums mt-1" id="dailyPosCashBreakdownDisplay">💳 POS: 0,00 € | 💵 Συρτ.: 0,00 €</p>
+                                    <p class="text-[11px] text-amber-700 font-medium mt-1 tabular-nums">Πάγια ημέρας: <b id="dailyBurnRateDisplay">0,00 €</b></p>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Ημερήσιο Κόστος Λειτουργίας</p>
-                            <p class="text-3xl font-bold text-slate-900 tracking-tight tabular-nums" id="dailyOperatingCost">0.00 <span class="text-xl font-normal text-slate-500">€</span></p>
-                            <p class="text-xs text-slate-500 mt-1">Αναλογία Παγίων & Προσωπικού + Σημερινές Πρώτες Ύλες</p>
-                        </div>
 
-                        <div class="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100">
-                            <p class="text-xs uppercase tracking-wider text-indigo-800 font-semibold mb-1">Νεκρό Σημείο Ημέρας</p>
-                            <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-indigo-700 tabular-nums" id="dailyBreakEvenPoint">0.00 <span class="text-lg font-normal text-indigo-500">€</span></p>
+                            <!-- Ανάλυση Εξόδων & Μεροκάματων (Από Ταμείο vs Εκτός Ταμείου) -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-200/60">
+                                    <p class="text-[11px] uppercase tracking-wider text-rose-700 font-semibold">Έξοδα Ημέρας</p>
+                                    <p class="text-base font-bold text-rose-700 tabular-nums mt-0.5" id="dailyExpensesCardDisplay">0,00 €</p>
+                                    <p class="text-[11px] text-slate-600 mt-1 tabular-nums" id="dailyExpensesDrawerSplitDisplay">Ταμείο: 0,00 € | Εκτός: 0,00 €</p>
+                                </div>
+                                <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-200/60">
+                                    <p class="text-[11px] uppercase tracking-wider text-blue-800 font-semibold">Μεροκάματα Ημέρας</p>
+                                    <p class="text-base font-bold text-blue-900 tabular-nums mt-0.5" id="dailyWagesCardDisplay">0,00 €</p>
+                                    <p class="text-[11px] text-slate-600 mt-1 tabular-nums" id="dailyWagesDrawerSplitDisplay">Ταμείο: 0,00 € | Εκτός: 0,00 €</p>
+                                </div>
                             </div>
-                            <p class="text-xs text-indigo-600 mt-1">Απαιτούμενος τζίρος για μηδενικό κέρδος (με ~30% Food Cost)</p>
-                        </div>
 
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                            <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Καθαρό Κέρδος / Ζημιά Ημέρας</p>
-                            <div class="flex items-end gap-2">
-                                <p class="text-2xl font-bold text-slate-900 tabular-nums" id="dailyNetProfit">0.00 <span class="text-lg font-normal text-slate-500">€</span></p>
+                            <!-- Συνολικό Ημερήσιο Κόστος & Νεκρό Σημείο -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50/80 px-3.5 py-2.5 rounded-xl border border-slate-200/70">
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Ημερήσιο Κόστος Λειτουργίας</p>
+                                    <p class="text-xl font-bold text-slate-900 tracking-tight tabular-nums" id="dailyOperatingCost">0,00 €</p>
+                                    <p class="text-[11px] text-slate-500">Πάγια + Μεροκάματα + Σημερινά Έξοδα</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[11px] uppercase tracking-wider text-indigo-700 font-semibold">Νεκρό Σημείο Ημέρας</p>
+                                    <p class="text-lg font-bold text-indigo-700 tabular-nums" id="dailyBreakEvenPoint">0,00 €</p>
+                                    <p class="text-[10px] text-indigo-500">Ελάχιστος καθαρός τζίρος</p>
+                                </div>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">Τζίρος - Ημερήσιο Κόστος</p>
+                        </div>
+                    </div>
+
+                    <!-- Τελικό Αποτέλεσμα («Τι Μένει Στην Πραγματικότητα») -->
+                    <div class="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 mt-4 shadow-sm">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider text-slate-300 font-bold mb-1">Πραγματικό Καθαρό Αποτέλεσμα («Τι Μένει»)</p>
+                                <div class="flex items-baseline gap-2 flex-wrap">
+                                    <p class="text-2xl sm:text-3xl font-bold text-white tabular-nums" id="dailyNetProfit">0,00 €</p>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1">Καθαρός Τζίρος (άνευ ΦΠΑ) − Έξοδα − Μεροκάματα − Αναλογούντα Πάγια</p>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span id="dailyNetProfitAfterIka" class="inline-block text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg tabular-nums">Μετά από ΙΚΑ: 0,00 €</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -661,8 +756,15 @@
                     </div>
                     
                     <div class="mb-1">
-                        <label for="modalCashierName" class="block text-xs font-semibold text-slate-700 mb-1">Όνομα Ταμία <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
-                        <input type="text" id="modalCashierName" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="π.χ. Γιάννης">
+                        <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                            <label for="modalCashierName" class="block text-xs font-semibold text-slate-700">Βάρδια / Όνομα Ταμία <span class="text-xs text-slate-400 font-normal">(Προαιρετικό)</span></label>
+                            <div class="flex items-center gap-1 flex-wrap">
+                                <button type="button" data-shift-preset="☀️ Πρωινή Βάρδια" class="modal-shift-preset-chip text-[11px] font-medium bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md transition-colors">☀️ Πρωινή</button>
+                                <button type="button" data-shift-preset="🌙 Βραδινή Βάρδια" class="modal-shift-preset-chip text-[11px] font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-2 py-0.5 rounded-md transition-colors">🌙 Βραδινή</button>
+                                <button type="button" data-shift-preset="⚡ Ολοήμερο Ταμείο" class="modal-shift-preset-chip text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md transition-colors">⚡ Ολοήμερο</button>
+                            </div>
+                        </div>
+                        <input type="text" id="modalCashierName" class="w-full px-3 py-2.5 text-base sm:text-sm bg-slate-50/50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="π.χ. Βραδινή - Γιάννης">
                     </div>
                 </div>
             </div>

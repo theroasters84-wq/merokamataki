@@ -1,9 +1,96 @@
 import { apiFetchEmployees, apiSaveEmployeesBulk } from './api.js';
 import { employeeListEl, addEmployeeBtn } from './dom.js';
-import { formatTimeSlots, showToast } from './utils.js';
+import { formatCurrency, formatTimeSlots, showToast } from './utils.js';
 
 let updateCallback = null;
 let renderCallback = null;
+
+const DAYS_META = [
+    { id: 1, label: 'Δε', title: 'Δευτέρα' },
+    { id: 2, label: 'Τρ', title: 'Τρίτη' },
+    { id: 3, label: 'Τε', title: 'Τετάρτη' },
+    { id: 4, label: 'Πε', title: 'Πέμπτη' },
+    { id: 5, label: 'Πα', title: 'Παρασκευή' },
+    { id: 6, label: 'Σα', title: 'Σάββατο' },
+    { id: 0, label: 'Κυ', title: 'Κυριακή' }
+];
+
+const updateEmployeeViewSummary = (row) => {
+    if (!row) return;
+    const name = row.querySelector('.name-input')?.value.trim() || 'Άγνωστος';
+    const rate = parseFloat(row.querySelector('.rate-input')?.value) || 0;
+    const displayNameEl = row.querySelector('.display-name');
+    if (displayNameEl) displayNameEl.textContent = name;
+
+    const summaryStatsEl = row.querySelector('.emp-view-stats');
+    const pillsContainerEl = row.querySelector('.emp-view-schedule-pills');
+    if (!summaryStatsEl || !pillsContainerEl) return;
+
+    let activeDays = 0;
+    let totalHours = 0;
+    const pillsHtml = [];
+
+    DAYS_META.forEach(d => {
+        const wrapper = row.querySelector(`.day-wrapper[data-day="${d.id}"]`);
+        const isChecked = wrapper?.querySelector('.day-checkbox')?.checked;
+        if (!isChecked) {
+            pillsHtml.push(`
+                <div class="px-2 py-1 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 text-slate-400 text-[11px] flex items-center justify-between gap-1 opacity-60" title="${d.title}: Ρεπό">
+                    <span class="font-semibold">${d.label}</span>
+                    <span class="text-[10px]">Ρεπό</span>
+                </div>
+            `);
+            return;
+        }
+
+        activeDays++;
+        const shift = wrapper.querySelector('.shift-input-day')?.value || 'morning';
+        const hours = parseFloat(wrapper.querySelector('.hours-input-day')?.value) || 0;
+        totalHours += hours;
+
+        const panel = row.querySelector(`.time-range-panel-day[data-day="${d.id}"]`);
+        const tFrom = panel?.querySelector('.time-from-day')?.value || '';
+        const tTo = panel?.querySelector('.time-to-day')?.value || '';
+        const tFrom2 = panel?.querySelector('.time-from-day-2')?.value || '';
+        const tTo2 = panel?.querySelector('.time-to-day-2')?.value || '';
+
+        const ranges = [];
+        if (tFrom && tTo) ranges.push(`${tFrom}-${tTo}`);
+        if (tFrom2 && tTo2) ranges.push(`${tFrom2}-${tTo2}`);
+        const timeStr = ranges.length > 0 ? ranges.join(', ') : `${hours}ω`;
+
+        let shiftIcon = '☀️';
+        let shiftLabel = 'Πρωί';
+        let badgeStyle = 'bg-amber-50/90 text-amber-900 border-amber-200/90';
+        if (shift === 'night') {
+            shiftIcon = '🌙';
+            shiftLabel = 'Βράδυ';
+            badgeStyle = 'bg-indigo-50/90 text-indigo-900 border-indigo-200/90';
+        } else if (shift === 'split') {
+            shiftIcon = '⚡';
+            shiftLabel = 'Σπαστό';
+            badgeStyle = 'bg-purple-50/90 text-purple-900 border-purple-200/90';
+        }
+
+        pillsHtml.push(`
+            <div class="px-2 py-1 rounded-lg border ${badgeStyle} text-[11px] flex flex-col justify-center leading-tight shadow-sm" title="${d.title}: ${shiftLabel} (${hours} ώρες${ranges.length ? ' • ' + ranges.join(', ') : ''})">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="font-bold">${d.label}</span>
+                    <span>${shiftIcon} <span class="font-semibold tabular-nums">${hours}ω</span></span>
+                </div>
+                ${ranges.length > 0 ? `<span class="text-[9px] opacity-80 truncate tabular-nums mt-0.5">${timeStr}</span>` : `<span class="text-[9px] opacity-75 mt-0.5">${shiftLabel}</span>`}
+            </div>
+        `);
+    });
+
+    const weeklyWage = totalHours * rate;
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    summaryStatsEl.innerHTML = `
+        <span class="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 tabular-nums">${activeDays} ημ. • ${Math.round(totalHours * 10) / 10} ώρ./εβδ.</span>
+        <span class="admin-only ${isAdmin ? '' : 'hidden'} text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 tabular-nums">${formatCurrency(rate)}/ώρα • ${formatCurrency(weeklyWage)}/εβδ.</span>
+    `;
+    pillsContainerEl.innerHTML = pillsHtml.join('');
+};
 
 export const initEmployees = (onUpdate, onRender) => {
     updateCallback = onUpdate;
@@ -62,6 +149,7 @@ const renderCalendar = () => {
 
                     row.querySelector('.edit-mode').classList.add('hidden');
                     row.querySelector('.view-mode').classList.remove('hidden');
+                    updateEmployeeViewSummary(row);
                 });
                 updateCalculations();
                 renderCalendar();
@@ -190,12 +278,16 @@ const renderCalendar = () => {
 
         div.innerHTML = `
             <!-- ΠΡΟΒΟΛΗ (Όταν αποθηκευτεί) -->
-            <div class="view-mode hidden flex justify-between items-center w-full cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
-                <div class="flex items-center gap-2.5">
-                    <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base">👤</span>
-                    <span class="font-bold text-slate-800 display-name text-base sm:text-lg"></span>
+            <div class="view-mode hidden flex flex-col gap-2.5 w-full cursor-pointer hover:bg-slate-50/80 p-2 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                <div class="flex flex-wrap justify-between items-center gap-2 w-full">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base flex-shrink-0">👤</span>
+                        <span class="font-bold text-slate-800 display-name text-base sm:text-lg"></span>
+                        <div class="emp-view-stats flex items-center gap-1.5 flex-wrap"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-colors ml-auto">✏️ Επεξεργασία</span>
                 </div>
-                <span class="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-colors">✏️ Επεξεργασία</span>
+                <div class="emp-view-schedule-pills grid grid-cols-2 sm:grid-cols-7 gap-1.5 w-full"></div>
             </div>
             <!-- ΕΠΕΞΕΡΓΑΣΙΑ -->
             <div class="edit-mode flex flex-col gap-2.5 w-full">
@@ -235,6 +327,7 @@ const renderCalendar = () => {
                 renderCalendar();
                 const ok = await saveEmployeesToServer();
                 if (ok) {
+                    updateEmployeeViewSummary(div);
                     editMode.classList.add('hidden');
                     viewMode.classList.remove('hidden');
                 }
