@@ -126,84 +126,183 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/forgot-password', async (req, res) => {
+// --- Βοηθητική Συνάρτηση Δημιουργίας SMTP Transporter (Gmail / Custom SMTP) ---
+const createMailTransporter = () => {
+  const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  // Αφαίρεση τυχόν κενών από το 16-ψήφιο Gmail App Password
+  const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
+  const smtpHost = (process.env.SMTP_HOST || '').trim();
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+
+  if (smtpHost) {
+    return nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass }
+    });
+  }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: smtpUser, pass: smtpPass }
+  });
+};
+
+const handleForgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Παρακαλώ εισάγετε το email σας.' });
-
-    const userQuery = 'SELECT * FROM users WHERE email = $1';
-    const userResult = await pool.query(userQuery, [email]);
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Δεν βρέθηκε χρήστης με αυτό το email.' });
+    const rawEmail = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : '';
+    if (!rawEmail) {
+      return res.status(400).json({ error: 'Παρακαλώ εισάγετε το email σας.' });
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    // Λήξη σε 1 ώρα
-    const tokenExpiry = new Date(Date.now() + 3600000); 
+    const neutralSuccessMessage = 'Εάν το email είναι καταχωρημένο στο σύστημα, σας έχουμε αποστείλει σύνδεσμο επαναφοράς κωδικού.';
 
+    const userQuery = 'SELECT id, email FROM users WHERE LOWER(email) = $1';
+    const userResult = await pool.query(userQuery, [rawEmail]);
+
+    // Επιστρέφουμε πάντα ουδέτερο μήνυμα επιτυχίας ώστε να μην αποκαλύπτεται αν υπάρχει το email στη βάση
+    if (userResult.rows.length === 0) {
+      return res.json({ message: neutralSuccessMessage });
+    }
+
+    const user = userResult.rows[0];
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    // Λήξη σε 30 λεπτά
+    const tokenExpiry = new Date(Date.now() + 30 * 60 * 1000);
+
+    // Ακύρωση προηγούμενων αχρησιμοποίητων tokens του ίδιου χρήστη & αποθήκευση μόνο του SHA-256 hash
     await pool.query(
-      'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE email = $3',
-      [resetToken, tokenExpiry, email]
+      'UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL',
+      [user.id]
+    );
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+      [user.id, tokenHash, tokenExpiry]
     );
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail', // Προεπιλογή, μπορείς να το αλλάξεις αν χρησιμοποιείς άλλον πάροχο
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    // Διατήρηση συμβατότητας (αποθηκεύουμε επίσης το hash στη στήλη reset_token του users)
+    await pool.query(
+      'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
+      [tokenHash, tokenExpiry, user.id]
+    );
 
-    // Δυναμική κατασκευή του URL με βάση το host
-    const domain = req.headers.host || 'localhost:3000';
-    const resetUrl = `http://${domain}/reset-password.html?token=${resetToken}`;
+    const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+    const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
+    if (!smtpUser || !smtpPass) {
+      console.error('Forgot password error: Missing EMAIL_USER / EMAIL_PASS in environment variables.');
+      return res.status(500).json({ error: 'Ο διακομιστής email (SMTP) δεν έχει ρυθμιστεί ακόμα.' });
+    }
+
+    const transporter = createMailTransporter();
+
+    const configuredAppUrl = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
+    const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol || 'http';
+    const domain = req.headers.host || `localhost:${port}`;
+    const baseUrl = configuredAppUrl || `${protocol}://${domain}`;
+    const resetUrl = `${baseUrl}/?resetToken=${resetToken}`;
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
+      from: `"Μεροκαματάκι" <${smtpUser}>`,
+      to: user.email,
       subject: 'Επαναφορά Κωδικού Πρόσβασης - Μεροκαματάκι',
-      text: `Έχετε ζητήσει επαναφορά του κωδικού σας.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό πρόσβασης:\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`
+      text: `Έχετε ζητήσει επαναφορά του κωδικού σας στο Μεροκαματάκι.\n\nΠατήστε στον παρακάτω σύνδεσμο για να ορίσετε νέο κωδικό πρόσβασης (ισχύει για 30 λεπτά):\n${resetUrl}\n\nΑν δεν το ζητήσατε εσείς, παρακαλώ αγνοήστε αυτό το email.`,
+      html: `
+        <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+          <h2 style="margin-top: 0; color: #0f172a;">💼 Μεροκαματάκι — Ανάκτηση Κωδικού</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">Λάβαμε αίτημα επαναφοράς του κωδικού πρόσβασης για τον λογαριασμό σας.</p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-size: 14px;">Ορισμός Νέου Κωδικού</a>
+          </div>
+          <p style="font-size: 12px; line-height: 1.5; color: #64748b;">Ο σύνδεσμος είναι αυστηρά προσωπικός και <b>λήγει σε 30 λεπτά</b>. Αν το κουμπί δεν ανοίγει, αντιγράψτε τον παρακάτω σύνδεσμο στον browser σας:</p>
+          <p style="font-size: 12px; word-break: break-all; color: #3b82f6;">${resetUrl}</p>
+          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Αν δεν ζητήσατε εσείς επαναφορά κωδικού, μπορείτε να αγνοήσετε με ασφάλεια αυτό το μήνυμα.</p>
+        </div>
+      `
     };
 
     await transporter.sendMail(mailOptions);
-    
-    res.json({ message: 'Το email επαναφοράς εστάλη επιτυχώς.' });
+
+    res.json({ message: neutralSuccessMessage });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Ελέγξτε τις ρυθμίσεις του SMTP.' });
   }
-});
+};
 
-app.post('/api/reset-password', async (req, res) => {
+const handleResetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-    
+    const { token, newPassword } = req.body || {};
+
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Λείπουν απαραίτητα στοιχεία.' });
     }
 
-    const query = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiry > NOW()';
-    const result = await pool.query(query, [token]);
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Το token είναι μη έγκυρο ή έχει λήξει.' });
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'Ο νέος κωδικός πρέπει να αποτελείται από τουλάχιστον 6 χαρακτήρες.' });
     }
 
-    const user = result.rows[0];
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const cleanToken = String(token).trim();
+    const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
+
+    // 1. Έλεγχος στον πίνακα password_reset_tokens με βάση το SHA-256 hash
+    const tokenRecordResult = await pool.query(
+      `SELECT id, user_id FROM password_reset_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+       ORDER BY id DESC LIMIT 1`,
+      [tokenHash]
+    );
+
+    let targetUserId = null;
+    let tokenRecordId = null;
+
+    if (tokenRecordResult.rows.length > 0) {
+      targetUserId = tokenRecordResult.rows[0].user_id;
+      tokenRecordId = tokenRecordResult.rows[0].id;
+    } else {
+      // 2. Fallback έλεγχος στον πίνακα users (για συμβατότητα)
+      const legacyResult = await pool.query(
+        'SELECT id FROM users WHERE (reset_token = $1 OR reset_token = $2) AND reset_token_expiry > NOW()',
+        [tokenHash, cleanToken]
+      );
+      if (legacyResult.rows.length > 0) {
+        targetUserId = legacyResult.rows[0].id;
+      }
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Ο σύνδεσμος επαναφοράς είναι μη έγκυρος, έχει ήδη χρησιμοποιηθεί ή έχει λήξει.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(String(newPassword), 10);
 
     await pool.query(
       'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
-      [hashedPassword, user.id]
+      [hashedPassword, targetUserId]
     );
 
-    res.json({ message: 'Ο κωδικός σας ενημερώθηκε επιτυχώς!' });
+    if (tokenRecordId) {
+      await pool.query(
+        'UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL',
+        [targetUserId]
+      );
+    }
+
+    res.json({ message: 'Ο κωδικός σας ενημερώθηκε επιτυχώς! Μπορείτε πλέον να συνδεθείτε.' });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Σφάλμα κατά την επαναφορά κωδικού.' });
   }
-});
+};
+
+app.post('/api/auth/forgot-password', handleForgotPassword);
+app.post('/api/forgot-password', handleForgotPassword);
+
+app.post('/api/auth/reset-password', handleResetPassword);
+app.post('/api/reset-password', handleResetPassword);
 
 // --- Endpoints PIN Ιδιοκτήτη ---
 

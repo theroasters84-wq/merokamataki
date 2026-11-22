@@ -24,6 +24,22 @@ export const apiRegister = async (email, password, store_name) => {
     });
 };
 
+export const apiForgotPassword = async (email) => {
+    return await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+};
+
+export const apiResetPassword = async (token, newPassword) => {
+    return await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword })
+    });
+};
+
 export const apiSetPin = async (pin) => {
     return await fetch('/api/pin/set', {
         method: 'POST',

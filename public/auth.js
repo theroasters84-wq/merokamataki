@@ -1,4 +1,4 @@
-import { getToken, apiLogin, apiRegister, apiSetPin, apiVerifyPin, apiForgotPin, apiCheckToken } from './api.js';
+import { getToken, apiLogin, apiRegister, apiForgotPassword, apiResetPassword, apiSetPin, apiVerifyPin, apiForgotPin, apiCheckToken } from './api.js';
 import { showToast } from './utils.js';
 
 export function initAuth({ onAuthSuccess }) {
@@ -12,13 +12,30 @@ export function initAuth({ onAuthSuccess }) {
 
     const loginFormArea = document.getElementById('loginFormArea');
     const registerFormArea = document.getElementById('registerFormArea');
+    const forgotPasswordFormArea = document.getElementById('forgotPasswordFormArea');
+    const resetPasswordFormArea = document.getElementById('resetPasswordFormArea');
     const showRegisterBtn = document.getElementById('showRegisterBtn');
     const showLoginBtn = document.getElementById('showLoginBtn');
+    const showForgotPasswordBtn = document.getElementById('showForgotPasswordBtn');
+    const backToLoginFromForgotBtn = document.getElementById('backToLoginFromForgotBtn');
+    const backToLoginFromResetBtn = document.getElementById('backToLoginFromResetBtn');
     const authSubtitle = document.getElementById('authSubtitle');
     const registerEmail = document.getElementById('registerEmail');
     const registerPassword = document.getElementById('registerPassword');
+    const registerConfirmPassword = document.getElementById('registerConfirmPassword');
+    const registerPasswordMismatchMsg = document.getElementById('registerPasswordMismatchMsg');
     const registerStoreName = document.getElementById('registerStoreName');
     const registerBtn = document.getElementById('registerBtn');
+
+    const forgotPasswordEmail = document.getElementById('forgotPasswordEmail');
+    const forgotPasswordFeedback = document.getElementById('forgotPasswordFeedback');
+    const forgotPasswordSubmitBtn = document.getElementById('forgotPasswordSubmitBtn');
+
+    const resetNewPassword = document.getElementById('resetNewPassword');
+    const resetConfirmPassword = document.getElementById('resetConfirmPassword');
+    const resetPasswordMismatchMsg = document.getElementById('resetPasswordMismatchMsg');
+    const resetPasswordFeedback = document.getElementById('resetPasswordFeedback');
+    const resetPasswordSubmitBtn = document.getElementById('resetPasswordSubmitBtn');
 
     const setPinModal = document.getElementById('setPinModal');
     const newPinInput = document.getElementById('newPinInput');
@@ -35,6 +52,11 @@ export function initAuth({ onAuthSuccess }) {
     const enableAdminMode = () => {
         const adminElements = document.querySelectorAll('.admin-only');
         adminElements.forEach(el => el.classList.remove('hidden'));
+
+        const tabDashboardEl = document.getElementById('tabDashboard');
+        if (tabDashboardEl) {
+            tabDashboardEl.textContent = '📅 Ημερολόγιο & Στατιστικά';
+        }
 
         let exitAdminBtn = document.getElementById('exitAdminBtn');
         if (!exitAdminBtn) {
@@ -61,11 +83,70 @@ export function initAuth({ onAuthSuccess }) {
     const disableAdminMode = () => {
         const adminElements = document.querySelectorAll('.admin-only');
         adminElements.forEach(el => el.classList.add('hidden'));
+        const tabDashboardEl = document.getElementById('tabDashboard');
+        if (tabDashboardEl) {
+            tabDashboardEl.textContent = '📅 Ημερολόγιο Βαρδιών';
+        }
         const exitAdminBtn = document.getElementById('exitAdminBtn');
         if (exitAdminBtn) exitAdminBtn.classList.add('hidden');
     };
 
+    // Ανάκτηση resetToken από Query String (?resetToken=... ή ?token=...) ή Hash (#reset-password?token=...)
+    const extractResetTokenFromUrl = () => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const fromSearch = searchParams.get('resetToken') || searchParams.get('token');
+        if (fromSearch) return fromSearch.trim();
+
+        const hash = window.location.hash || '';
+        if (hash.includes('reset-password')) {
+            const qIndex = hash.indexOf('?');
+            if (qIndex !== -1) {
+                const hashParams = new URLSearchParams(hash.substring(qIndex + 1));
+                const fromHash = hashParams.get('token') || hashParams.get('resetToken');
+                if (fromHash) return fromHash.trim();
+            }
+        }
+        return null;
+    };
+
+    const showAuthPanel = (panelName) => {
+        [loginFormArea, registerFormArea, forgotPasswordFormArea, resetPasswordFormArea].forEach(form => {
+            if (form) form.classList.add('hidden');
+        });
+
+        if (panelName === 'register' && registerFormArea) {
+            registerFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Δημιουργήστε λογαριασμό για το νέο σας κατάστημα';
+        } else if (panelName === 'forgot' && forgotPasswordFormArea) {
+            forgotPasswordFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Εισάγετε το email σας για ανάκτηση κωδικού';
+            if (forgotPasswordFeedback) forgotPasswordFeedback.classList.add('hidden');
+            if (forgotPasswordEmail && loginEmail && loginEmail.value.trim() && !forgotPasswordEmail.value) {
+                forgotPasswordEmail.value = loginEmail.value.trim();
+            }
+        } else if (panelName === 'reset' && resetPasswordFormArea) {
+            resetPasswordFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Ορίστε τον νέο σας κωδικό πρόσβασης';
+            if (resetPasswordFeedback) resetPasswordFeedback.classList.add('hidden');
+        } else if (loginFormArea) {
+            loginFormArea.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Συνδεθείτε για να διαχειριστείτε το κατάστημά σας';
+        }
+    };
+
     const checkAuth = () => {
+        const urlResetToken = extractResetTokenFromUrl();
+        if (urlResetToken) {
+            loginContainer.classList.remove('hidden');
+            loginContainer.style.display = 'flex';
+            appContainer.classList.add('hidden');
+            appContainer.style.display = 'none';
+            disableAdminMode();
+            stopSessionCheck();
+            showAuthPanel('reset');
+            return;
+        }
+
         const token = getToken();
         if (token) {
             loginContainer.classList.add('hidden');
@@ -127,17 +208,193 @@ export function initAuth({ onAuthSuccess }) {
     if (showRegisterBtn && showLoginBtn) {
         showRegisterBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            loginFormArea.classList.add('hidden');
-            registerFormArea.classList.remove('hidden');
-            if (authSubtitle) authSubtitle.textContent = 'Δημιουργήστε λογαριασμό για το νέο σας κατάστημα';
+            showAuthPanel('register');
         });
 
         showLoginBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            registerFormArea.classList.add('hidden');
-            loginFormArea.classList.remove('hidden');
-            if (authSubtitle) authSubtitle.textContent = 'Συνδεθείτε για να διαχειριστείτε το κατάστημά σας';
+            showAuthPanel('login');
         });
+    }
+
+    if (showForgotPasswordBtn) {
+        showForgotPasswordBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showAuthPanel('forgot');
+            if (forgotPasswordEmail) forgotPasswordEmail.focus();
+        });
+    }
+
+    const clearResetTokenFromUrl = () => {
+        if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+    };
+
+    if (backToLoginFromForgotBtn) {
+        backToLoginFromForgotBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showAuthPanel('login');
+        });
+    }
+
+    if (backToLoginFromResetBtn) {
+        backToLoginFromResetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearResetTokenFromUrl();
+            showAuthPanel('login');
+        });
+    }
+
+    if (forgotPasswordSubmitBtn) {
+        forgotPasswordSubmitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = forgotPasswordEmail ? forgotPasswordEmail.value.trim() : '';
+            if (!email) {
+                if (forgotPasswordEmail) forgotPasswordEmail.focus();
+                return showToast('Παρακαλώ εισάγετε το email του λογαριασμού σας.', 'warning');
+            }
+
+            try {
+                forgotPasswordSubmitBtn.disabled = true;
+                forgotPasswordSubmitBtn.textContent = 'Αποστολή...';
+
+                const res = await apiForgotPassword(email);
+                const data = await res.json();
+
+                if (forgotPasswordFeedback) {
+                    forgotPasswordFeedback.classList.remove('hidden');
+                    if (res.ok) {
+                        forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-emerald-50 text-emerald-800 border-emerald-200';
+                        forgotPasswordFeedback.textContent = data.message || 'Εάν το email είναι καταχωρημένο, σας στείλαμε σύνδεσμο επαναφοράς.';
+                    } else {
+                        forgotPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-rose-50 text-rose-800 border-rose-200';
+                        forgotPasswordFeedback.textContent = data.error || 'Σφάλμα κατά την αποστολή email.';
+                    }
+                }
+
+                if (res.ok) {
+                    showToast('Ελέγξτε τα εισερχόμενα του email σας για τον σύνδεσμο επαναφοράς.', 'success');
+                } else {
+                    showToast(data.error || 'Σφάλμα κατά την αποστολή email.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+            } finally {
+                forgotPasswordSubmitBtn.disabled = false;
+                forgotPasswordSubmitBtn.textContent = 'Αποστολή Συνδέσμου Ανάκτησης';
+            }
+        });
+    }
+
+    const setResetPasswordMismatchError = (hasMismatch) => {
+        if (resetPasswordMismatchMsg) {
+            if (hasMismatch) resetPasswordMismatchMsg.classList.remove('hidden');
+            else resetPasswordMismatchMsg.classList.add('hidden');
+        }
+        if (resetConfirmPassword) {
+            if (hasMismatch) {
+                resetConfirmPassword.classList.add('border-rose-400', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+                resetConfirmPassword.classList.remove('border-slate-300', 'focus:border-primary', 'focus:ring-primary/20');
+            } else {
+                resetConfirmPassword.classList.remove('border-rose-400', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+                resetConfirmPassword.classList.add('border-slate-300', 'focus:border-primary', 'focus:ring-primary/20');
+            }
+        }
+    };
+
+    if (resetNewPassword && resetConfirmPassword) {
+        const checkLiveResetMatch = () => {
+            if (!resetConfirmPassword.value) {
+                setResetPasswordMismatchError(false);
+                return;
+            }
+            setResetPasswordMismatchError(resetNewPassword.value !== resetConfirmPassword.value);
+        };
+        resetNewPassword.addEventListener('input', checkLiveResetMatch);
+        resetConfirmPassword.addEventListener('input', checkLiveResetMatch);
+    }
+
+    if (resetPasswordSubmitBtn) {
+        resetPasswordSubmitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const resetToken = extractResetTokenFromUrl();
+            const newPassword = resetNewPassword ? resetNewPassword.value : '';
+            const confirmPassword = resetConfirmPassword ? resetConfirmPassword.value : '';
+
+            if (!resetToken) {
+                return showToast('Ο σύνδεσμος επαναφοράς είναι ελλιπής (λείπει το token).', 'error');
+            }
+            if (!newPassword || newPassword.length < 6) {
+                if (resetNewPassword) resetNewPassword.focus();
+                return showToast('Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.', 'warning');
+            }
+            if (newPassword !== confirmPassword) {
+                setResetPasswordMismatchError(true);
+                if (resetConfirmPassword) resetConfirmPassword.focus();
+                return showToast('Οι κωδικοί πρόσβασης δεν ταιριάζουν.', 'error');
+            }
+            setResetPasswordMismatchError(false);
+
+            try {
+                resetPasswordSubmitBtn.disabled = true;
+                resetPasswordSubmitBtn.textContent = 'Αποθήκευση...';
+
+                const res = await apiResetPassword(resetToken, newPassword);
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast(data.message || 'Ο κωδικός σας ενημερώθηκε επιτυχώς!', 'success');
+                    if (resetNewPassword) resetNewPassword.value = '';
+                    if (resetConfirmPassword) resetConfirmPassword.value = '';
+                    clearResetTokenFromUrl();
+                    showAuthPanel('login');
+                } else {
+                    if (resetPasswordFeedback) {
+                        resetPasswordFeedback.classList.remove('hidden');
+                        resetPasswordFeedback.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-rose-50 text-rose-800 border-rose-200';
+                        resetPasswordFeedback.textContent = data.error || 'Ο σύνδεσμος επαναφοράς δεν είναι έγκυρος ή έχει λήξει.';
+                    }
+                    showToast(data.error || 'Σφάλμα κατά την επαναφορά κωδικού.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Αδυναμία σύνδεσης με τον server.', 'error');
+            } finally {
+                resetPasswordSubmitBtn.disabled = false;
+                resetPasswordSubmitBtn.textContent = 'Αποθήκευση Νέου Κωδικού';
+            }
+        });
+    }
+
+    const setPasswordMismatchError = (hasMismatch) => {
+        if (registerPasswordMismatchMsg) {
+            if (hasMismatch) registerPasswordMismatchMsg.classList.remove('hidden');
+            else registerPasswordMismatchMsg.classList.add('hidden');
+        }
+        if (registerConfirmPassword) {
+            if (hasMismatch) {
+                registerConfirmPassword.classList.add('border-rose-400', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+                registerConfirmPassword.classList.remove('border-slate-300', 'focus:border-primary', 'focus:ring-primary/20');
+            } else {
+                registerConfirmPassword.classList.remove('border-rose-400', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+                registerConfirmPassword.classList.add('border-slate-300', 'focus:border-primary', 'focus:ring-primary/20');
+            }
+        }
+    };
+
+    if (registerPassword && registerConfirmPassword) {
+        const checkLivePasswordMatch = () => {
+            if (!registerConfirmPassword.value) {
+                setPasswordMismatchError(false);
+                return;
+            }
+            setPasswordMismatchError(registerPassword.value !== registerConfirmPassword.value);
+        };
+        registerPassword.addEventListener('input', checkLivePasswordMatch);
+        registerConfirmPassword.addEventListener('input', checkLivePasswordMatch);
     }
 
     if (registerBtn) {
@@ -145,9 +402,21 @@ export function initAuth({ onAuthSuccess }) {
             e.preventDefault();
             const email = registerEmail.value.trim();
             const password = registerPassword.value;
+            const confirmPassword = registerConfirmPassword ? registerConfirmPassword.value : password;
             const storeName = registerStoreName.value.trim();
 
             if (!email || !password) return showToast('Συμπληρώστε email και κωδικό.', 'warning');
+            if (registerConfirmPassword && !confirmPassword) {
+                setPasswordMismatchError(true);
+                registerConfirmPassword.focus();
+                return showToast('Παρακαλώ επιβεβαιώστε τον κωδικό πρόσβασης.', 'warning');
+            }
+            if (password !== confirmPassword) {
+                setPasswordMismatchError(true);
+                if (registerConfirmPassword) registerConfirmPassword.focus();
+                return showToast('Οι κωδικοί πρόσβασης δεν ταιριάζουν. Παρακαλώ ελέγξτε την επιβεβαίωση κωδικού.', 'error');
+            }
+            setPasswordMismatchError(false);
 
             try {
                 registerBtn.disabled = true;
@@ -165,6 +434,7 @@ export function initAuth({ onAuthSuccess }) {
                         localStorage.setItem('hasPin', loginData.hasPin);
                         registerEmail.value = '';
                         registerPassword.value = '';
+                        if (registerConfirmPassword) registerConfirmPassword.value = '';
                         registerStoreName.value = '';
                         window.location.reload(); 
                     } else {

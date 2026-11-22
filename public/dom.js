@@ -452,7 +452,14 @@ export const openDayActionModalForDate = (year, month, day) => {
     if (dayActionModal) dayActionModal.classList.remove('hidden');
 };
 
+export const updateDashboardTabRoleLabel = () => {
+    if (!tabDashboard) return;
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    tabDashboard.textContent = isAdmin ? '📅 Ημερολόγιο & Στατιστικά' : '📅 Ημερολόγιο Βαρδιών';
+};
+
 export const updateSelectedDayBar = () => {
+    updateDashboardTabRoleLabel();
     if (!selectedDayTitleDisplay || !selectedDayShiftsPills) return;
     const pad = (n) => String(n).padStart(2, '0');
     const now = new Date();
@@ -871,6 +878,14 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
     const pad = (num) => String(num).padStart(2, '0');
     const targetDateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
     
+    const now = new Date();
+    const isToday = (
+        year === now.getFullYear() &&
+        month === now.getMonth() &&
+        day === now.getDate()
+    );
+    const currentDecHour = now.getHours() + (now.getMinutes() / 60);
+
     const savedRecordsForDay = appState.currentMonthlyRecords.filter(r => getRecordDateStr(r.date) === targetDateStr);
     
     let alreadyWorkedEmpNames = [];
@@ -902,6 +917,9 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
         updateModalDrawerStatus();
     };
 
+    const primaryShiftItems = [];
+    const upcomingNightShiftItems = [];
+
     const employeeRows = employeeListEl.querySelectorAll('.employee-row');
     employeeRows.forEach(row => {
         const checkbox = row.querySelector(`.day-checkbox[data-day="${dayOfWeek}"]`);
@@ -912,15 +930,10 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
             const hasAlreadyWorked = alreadyWorkedEmpNames.includes(name);
 
             const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
-            let hours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
-            
-            if (hasAlreadyWorked || mode === 'expenses') { hours = 0; }
+            const scheduledHours = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 0;
+            let hours = scheduledHours;
 
             const defaultShift = dayWrapper ? dayWrapper.querySelector('.shift-input-day').value : 'morning';
-            const wage = rate * hours;
-            workingEmployeesCount++;
-
-            let alreadyBadge = hasAlreadyWorked ? '<span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-md ml-1.5 font-semibold" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>' : '';
 
             let timeRanges = [];
             let tFrom = '', tTo = '', tFrom2 = '', tTo2 = '';
@@ -933,12 +946,41 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
                 if (tFrom && tTo) timeRanges.push(`${tFrom}-${tTo}`);
                 if (tFrom2 && tTo2) timeRanges.push(`${tFrom2}-${tTo2}`);
             }
+
+            // Έλεγχος αν πρόκειται για βραδινή/απογευματινή βάρδια της ΣΗΜΕΡΙΝΗΣ ημέρας που δεν έχει έρθει ακόμα η ώρα της
+            let isUpcomingNightShift = false;
+            if (isToday && !hasAlreadyWorked && mode !== 'expenses') {
+                if (tFrom) {
+                    const [fromH, fromM] = tFrom.split(':').map(Number);
+                    const startDecHour = (fromH || 0) + ((fromM || 0) / 60);
+                    if ((defaultShift === 'night' || startDecHour >= 16) && currentDecHour < startDecHour) {
+                        isUpcomingNightShift = true;
+                    }
+                } else if (defaultShift === 'night' && currentDecHour < 17) {
+                    isUpcomingNightShift = true;
+                }
+            }
+
+            if (hasAlreadyWorked || mode === 'expenses' || isUpcomingNightShift) {
+                hours = 0;
+            }
+
+            const wage = rate * hours;
+            workingEmployeesCount++;
+
+            let alreadyBadge = hasAlreadyWorked
+                ? '<span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-md ml-1.5 font-semibold" title="Έχει ήδη χρεωθεί σε προηγούμενο ταμείο της μέρας">Έχει χρεωθεί</span>'
+                : (isUpcomingNightShift
+                    ? '<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-md ml-1.5 font-semibold" title="Η βραδινή βάρδια δεν έχει ξεκινήσει ακόμα">🌙 Βραδινή (Αργότερα)</span>'
+                    : '');
+
             let timeBadges = timeRanges.map(r => `<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-md ml-1 font-medium shadow-sm whitespace-nowrap tabular-nums">🕒 ${r}</span>`).join('');
 
             const li = document.createElement('li');
             li.className = 'flex flex-col gap-2.5 rounded-xl border border-slate-200 p-3 bg-slate-50/60 transition-opacity';
             li.dataset.empName = name;
             li.dataset.empRate = rate;
+            li.dataset.scheduledHours = scheduledHours > 0 ? scheduledHours : 8;
             li.dataset.timeFrom = tFrom;
             li.dataset.timeTo = tTo;
             li.dataset.timeFrom2 = tFrom2;
@@ -1056,9 +1098,8 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
 
             activeCb.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    if (parseFloat(hoursInput.value) === 0 && !hasAlreadyWorked) {
-                        const dayWrapper = row.querySelector(`.day-wrapper[data-day="${dayOfWeek}"]`);
-                        hoursInput.value = dayWrapper ? (parseFloat(dayWrapper.querySelector('.hours-input-day').value) || 0) : 8;
+                    if (parseFloat(hoursInput.value) === 0) {
+                        hoursInput.value = parseFloat(li.dataset.scheduledHours) || 8;
                     }
                     hoursInput.disabled = false;
                     shiftSelect.disabled = false;
@@ -1082,13 +1123,60 @@ export const openDayModal = (year, month, day, mode = 'closure') => {
 
             hoursInput.addEventListener('input', updateModalStaffTotal);
             paidCb.addEventListener('change', updateModalDrawerStatus);
-            modalShiftsList.appendChild(li);
+
+            if (isUpcomingNightShift) {
+                upcomingNightShiftItems.push(li);
+            } else {
+                primaryShiftItems.push(li);
+            }
         }
     });
 
     if (workingEmployeesCount === 0) {
         modalShiftsList.innerHTML = '<li class="italic text-slate-400 py-1">Κανένας εργαζόμενος.</li>';
     } else {
+        if (primaryShiftItems.length === 0 && upcomingNightShiftItems.length > 0) {
+            const infoLi = document.createElement('li');
+            infoLi.className = 'text-xs text-slate-500 italic bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80';
+            infoLi.textContent = 'Δεν υπάρχουν πρωινές βάρδιες σε εξέλιξη. Οι βραδινές βάρδιες ξεκινούν αργότερα.';
+            modalShiftsList.appendChild(infoLi);
+        } else {
+            primaryShiftItems.forEach(item => modalShiftsList.appendChild(item));
+        }
+
+        if (upcomingNightShiftItems.length > 0) {
+            const nightWrapperLi = document.createElement('li');
+            nightWrapperLi.className = 'pt-1';
+
+            const toggleNightBtn = document.createElement('button');
+            toggleNightBtn.type = 'button';
+            toggleNightBtn.className = 'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-800 border border-indigo-200/80 text-xs font-semibold transition-colors';
+            const updateToggleBtnLabel = (isExpanded) => {
+                toggleNightBtn.innerHTML = `
+                    <span class="flex items-center gap-1.5">
+                        <span>🌙</span>
+                        <span>${isExpanded ? 'Απόκρυψη βραδινών βαρδιών' : `+ Εμφάνιση βραδινών βαρδιών (${upcomingNightShiftItems.length})`}</span>
+                    </span>
+                    <span class="text-[11px] font-normal text-indigo-600">${isExpanded ? '▲' : 'Δεν έχει έρθει η ώρα τους ▼'}</span>
+                `;
+            };
+            updateToggleBtnLabel(false);
+
+            const nightListContainer = document.createElement('ul');
+            nightListContainer.className = 'hidden space-y-2.5 mt-2 pl-2 border-l-2 border-indigo-200';
+            upcomingNightShiftItems.forEach(item => nightListContainer.appendChild(item));
+
+            toggleNightBtn.addEventListener('click', () => {
+                const willExpand = nightListContainer.classList.contains('hidden');
+                nightListContainer.classList.toggle('hidden');
+                updateToggleBtnLabel(willExpand);
+            });
+
+            nightWrapperLi.appendChild(toggleNightBtn);
+            nightWrapperLi.appendChild(nightListContainer);
+            modalShiftsList.appendChild(nightWrapperLi);
+        }
+
         const totalLi = document.createElement('li');
         totalLi.className = 'flex justify-between items-center py-2.5 px-3 font-bold text-slate-800 mt-1 bg-blue-50/60 rounded-xl border border-blue-100 tabular-nums';
         totalLi.innerHTML = `<span class="text-xs uppercase tracking-wider text-slate-600">Σύνολο Κόστους Προσωπικού:</span><span class="modal-staff-total-val text-primary text-base">0,00 €</span>`;

@@ -106,6 +106,19 @@ const initDB = async () => {
     await pool.query(`ALTER TABLE monthly_summaries DROP CONSTRAINT IF EXISTS monthly_summaries_store_month_year_key;`);
     await pool.query(`ALTER TABLE monthly_summaries ADD CONSTRAINT monthly_summaries_store_month_year_key UNIQUE (store_id, month, year);`);
 
+    // Πίνακας ασφαλούς αποθήκευσης hashed tokens επαναφοράς κωδικού (SHA-256)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_tokens(token_hash);`);
+
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Error initializing database tables:', error);
