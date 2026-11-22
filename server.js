@@ -134,18 +134,26 @@ const createMailTransporter = () => {
   const smtpHost = (process.env.SMTP_HOST || '').trim();
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
 
+  const timeoutConfig = {
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
+  };
+
   if (smtpHost) {
     return nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
-      auth: { user: smtpUser, pass: smtpPass }
+      auth: { user: smtpUser, pass: smtpPass },
+      ...timeoutConfig
     });
   }
 
   return nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: smtpUser, pass: smtpPass }
+    auth: { user: smtpUser, pass: smtpPass },
+    ...timeoutConfig
   });
 };
 
@@ -191,11 +199,39 @@ const handleForgotPassword = async (req, res) => {
     const smtpUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
     const smtpPass = (process.env.EMAIL_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, '');
     if (!smtpUser || !smtpPass) {
-      console.error('Forgot password error: Missing EMAIL_USER / EMAIL_PASS in environment variables.');
+      const missingVars = [];
+      if (!smtpUser) missingVars.push('EMAIL_USER (ή SMTP_USER)');
+      if (!smtpPass) missingVars.push('EMAIL_PASS (ή SMTP_PASS)');
+      console.error(
+        `[SMTP Config Error] Forgot password failed: Λείπουν οι μεταβλητές περιβάλλοντος: ${missingVars.join(', ')}. Ελέγξτε το αρχείο .env ή τα Environment Variables του server.`
+      );
       return res.status(500).json({ error: 'Ο διακομιστής email (SMTP) δεν έχει ρυθμιστεί ακόμα.' });
     }
 
     const transporter = createMailTransporter();
+
+    // Προκαταρκτικός έλεγχος σύνδεσης/αυθεντικοποίησης SMTP με ασφαλές timeout & χωρίς διαρροή μυστικών
+    try {
+      await Promise.race([
+        transporter.verify(),
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            const timeoutErr = new Error('SMTP verify timed out after 10000ms');
+            timeoutErr.code = 'ETIMEDOUT';
+            timeoutErr.command = 'VERIFY';
+            reject(timeoutErr);
+          }, 10000)
+        )
+      ]);
+    } catch (verifyErr) {
+      console.error('[SMTP Verify Error] Αποτυχία επαλήθευσης σύνδεσης SMTP πριν την αποστολή:', {
+        code: verifyErr.code || 'UNKNOWN_CODE',
+        responseCode: verifyErr.responseCode || null,
+        command: verifyErr.command || 'VERIFY',
+        message: verifyErr.message || 'Unknown verify error'
+      });
+      return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Ελέγξτε τις ρυθμίσεις του SMTP.' });
+    }
 
     const configuredAppUrl = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
     const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
@@ -228,7 +264,12 @@ const handleForgotPassword = async (req, res) => {
 
     res.json({ message: neutralSuccessMessage });
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('[Forgot Password Error] Αποτυχία στη διαδικασία ανάκτησης κωδικού:', {
+      code: error.code || 'UNKNOWN_CODE',
+      responseCode: error.responseCode || null,
+      command: error.command || null,
+      message: error.message || 'Unknown error'
+    });
     res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email. Ελέγξτε τις ρυθμίσεις του SMTP.' });
   }
 };
