@@ -161,11 +161,12 @@ const handleForgotPassword = async (req, res) => {
 
     const neutralSuccessMessage = 'Εάν το email είναι καταχωρημένο στο σύστημα, σας έχουμε αποστείλει σύνδεσμο επαναφοράς κωδικού.';
 
-    const userQuery = 'SELECT id, email FROM users WHERE LOWER(email) = $1';
+    const userQuery = 'SELECT id, email FROM users WHERE LOWER(TRIM(email)) = $1';
     const userResult = await pool.query(userQuery, [rawEmail]);
 
     // Επιστρέφουμε πάντα ουδέτερο μήνυμα επιτυχίας ώστε να μην αποκαλύπτεται αν υπάρχει το email στη βάση
     if (userResult.rows.length === 0) {
+      console.log('[Forgot Password] No matching user found');
       return res.json({ message: neutralSuccessMessage });
     }
 
@@ -225,7 +226,8 @@ const handleForgotPassword = async (req, res) => {
         return res.status(500).json({ error: 'Λείπει η διεύθυνση αποστολέα (EMAIL_USER / MAIL_FROM) στις ρυθμίσεις.' });
       }
 
-      const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      console.log('[Forgot Password] Sending via Brevo API...');
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -234,25 +236,25 @@ const handleForgotPassword = async (req, res) => {
         },
         body: JSON.stringify({
           sender: { name: 'Μεροκαματάκι', email: senderEmail },
-          to: [{ email: user.email }],
+          to: [{ email: String(user.email).trim() }],
           subject: emailSubject,
           htmlContent: emailHtml,
           textContent: emailText
         })
       });
 
-      if (!brevoResponse.ok) {
-        const errBody = await brevoResponse.text().catch(() => 'Unable to read response body');
-        console.error('[Brevo API Error] Αποτυχία αποστολής email μέσω Brevo HTTPS API:', {
-          status: brevoResponse.status,
-          statusText: brevoResponse.statusText,
-          details: errBody
-        });
+      console.log('[Forgot Password] Brevo response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read response body');
+        console.error('[Brevo API Error]', response.status, errorText);
         return res.status(500).json({ error: 'Σφάλμα κατά την αποστολή email μέσω υπηρεσίας API.' });
       }
 
       return res.json({ message: neutralSuccessMessage });
     }
+
+    console.log('[Forgot Password] BREVO_API_KEY not found in environment, checking fallback providers...');
 
     // 2. Προτεραιότητα Β: Αποστολή μέσω Resend HTTPS API (Port 443 - παρακάμπτει μπλοκάρισμα SMTP θυρών)
     if (resendApiKey) {
